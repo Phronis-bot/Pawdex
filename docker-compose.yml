@@ -1,0 +1,31 @@
+services:
+  db:
+    build: ./db
+    environment:
+      POSTGRES_USER: pawdex
+      POSTGRES_PASSWORD: pawdex
+      POSTGRES_DB: pawdex
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # -h localhost: during first-run init Postgres listens only on the unix socket,
+      # so this passes only once the real server is up.
+      test: ["CMD-SHELL", "pg_isready -h localhost -U pawdex -d pawdex"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: ./api
+    environment:
+      PAWDEX_DATABASE_URL: postgresql+psycopg://pawdex:pawdex@db:5432/pawdex
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/srv/api
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
