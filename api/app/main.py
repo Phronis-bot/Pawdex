@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_session
+from app.sightings import router as sightings_router
 
-app = FastAPI(title="Pawdex API", version="0.0.1")
+app = FastAPI(title="Pawdex API", version="0.1.0")
+app.include_router(sightings_router)
 
 app.add_middleware(
     CORSMiddleware,
