@@ -84,11 +84,27 @@ class _CardBody extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
-        Text([speciesLabel(animal.species), if (card.coat != null) card.coat!].join(' · '),
-            style: text.titleMedium),
+        Text(
+          [
+            speciesLabel(animal.species),
+            if (card.breed != null) card.breed!.name,
+            if (card.coat != null) card.coat!,
+          ].join(' · '),
+          style: text.titleMedium,
+        ),
         const SizedBox(height: 12),
         Text(card.discoveredByMe ? 'Discovered by you' : 'Discovered by ${card.discoveredBy}'),
         Text('Seen $seen ${seen == 1 ? 'time' : 'times'} · first on ${_date(card.chronicle.first.createdAt)}'),
+        if (card.breed case final breed?) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.public),
+              title: Text('${breed.name} · from ${breed.origin}'),
+              subtitle: Text(breed.history),
+            ),
+          ),
+        ],
         if (card.coatFact case final fact?) ...[
           const SizedBox(height: 16),
           Card(

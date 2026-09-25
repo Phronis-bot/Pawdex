@@ -84,6 +84,20 @@ class ChronicleEntry {
   final bool byMe;
 }
 
+class BreedInfo {
+  BreedInfo({required this.name, required this.origin, required this.history});
+
+  factory BreedInfo.fromJson(Map<String, dynamic> json) => BreedInfo(
+        name: json['name'] as String,
+        origin: json['origin'] as String,
+        history: json['history'] as String,
+      );
+
+  final String name;
+  final String origin;
+  final String history;
+}
+
 /// Everything on an animal's card. Carries no location.
 class AnimalCard {
   AnimalCard({
@@ -92,6 +106,7 @@ class AnimalCard {
     required this.discoveredByMe,
     required this.coat,
     required this.coatFact,
+    required this.breed,
     required this.chronicle,
   });
 
@@ -101,6 +116,7 @@ class AnimalCard {
         discoveredByMe: json['discovered_by_me'] as bool,
         coat: json['coat'] as String?,
         coatFact: json['coat_fact'] as String?,
+        breed: json['breed'] == null ? null : BreedInfo.fromJson(json['breed'] as Map<String, dynamic>),
         chronicle: (json['chronicle'] as List)
             .map((e) => ChronicleEntry.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -111,6 +127,9 @@ class AnimalCard {
   final bool discoveredByMe;
   final String? coat;
   final String? coatFact;
+
+  /// Only when the server was confident; null for mixed breed.
+  final BreedInfo? breed;
 
   /// Oldest first.
   final List<ChronicleEntry> chronicle;

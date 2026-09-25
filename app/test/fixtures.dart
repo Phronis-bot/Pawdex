@@ -25,12 +25,18 @@ Map<String, dynamic> animalJson({
       'rarity': rarity,
     };
 
-Map<String, dynamic> cardJson({String? name = 'Mo', String rarity = 'legendary'}) => {
+Map<String, dynamic> cardJson({
+  String? name = 'Mo',
+  String rarity = 'legendary',
+  Map<String, dynamic>? breed,
+}) =>
+    {
       ...animalJson(id: 'mo', name: name, count: 2, rarity: rarity),
       'discovered_by': 'Sleepy Mango',
       'discovered_by_me': false,
       'coat': 'Calico',
       'coat_fact': 'Calico cats are almost always female.',
+      'breed': breed,
       'chronicle': [
         {'sighting_id': 's1', 'created_at': '2026-09-20T10:00:00Z', 'by': 'Sleepy Mango', 'by_me': false},
         {'sighting_id': 's2', 'created_at': '2026-09-25T10:00:00Z', 'by': 'Brave Noodle', 'by_me': true},

@@ -44,6 +44,32 @@ void main() {
     expect(find.text('by Sleepy Mango'), findsOneWidget);
   });
 
+  testWidgets('card screen shows the breed block only when there is a breed', (tester) async {
+    Future<void> open(Map<String, dynamic> json) async {
+      final api = ApiClient(
+        baseUrl: 'http://api',
+        userId: 'u',
+        client: MockClient((request) async =>
+            request.url.path == '/animals/mo' ? jsonResponse(json) : http.Response('', 404)),
+      );
+      await tester.pumpWidget(MaterialApp(home: AnimalCardScreen(key: UniqueKey(), api: api, animalId: 'mo')));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Did you know?'), 200);
+    }
+
+    await open(cardJson(breed: {
+      'name': 'Siamese',
+      'origin': 'Thailand',
+      'history': 'One of the oldest known breeds.',
+    }));
+    expect(find.text('Cat · Siamese · Calico'), findsOneWidget);
+    expect(find.text('Siamese · from Thailand'), findsOneWidget);
+    expect(find.text('One of the oldest known breeds.'), findsOneWidget);
+
+    await open(cardJson());
+    expect(find.textContaining('from Thailand'), findsNothing);
+  });
+
   testWidgets('share card shows name, rarity and discoverer but no place', (tester) async {
     final card = AnimalCard.fromJson(cardJson());
     // 1x1 transparent PNG.
