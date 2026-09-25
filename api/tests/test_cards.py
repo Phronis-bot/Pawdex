@@ -28,7 +28,8 @@ def test_coat_table_is_complete():
     for species, coats in COATS.items():
         assert {c.rarity for c in coats.values()} == set(Rarity), species
         for key, coat in coats.items():
-            assert coat.label and coat.prompt and len(coat.fact) > 20, key
+            assert coat.label and coat.prompt, key
+            assert len(coat.facts) >= 3 and all(len(f) > 20 for f in coat.facts), key
 
 
 @pytest.mark.parametrize(
@@ -71,7 +72,8 @@ def test_card_shows_discoverer_coat_and_chronicle(fake_embedder):
     assert body["sightings_count"] == 2
     assert body["coat"] == "Ginger"
     assert body["rarity"] == "common"
-    assert "male" in body["coat_fact"]
+    assert len(body["coat_facts"]) == 3
+    assert "male" in body["coat_facts"][0]
     assert [(e["sighting_id"], e["by"], e["by_me"]) for e in body["chronicle"]] == [
         (first["sighting"]["id"], nickname(finder), False),
         (second["sighting"]["id"], nickname(visitor), True),

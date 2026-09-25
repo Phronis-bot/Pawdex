@@ -105,7 +105,7 @@ class AnimalCard {
     required this.discoveredBy,
     required this.discoveredByMe,
     required this.coat,
-    required this.coatFact,
+    required this.coatFacts,
     required this.breed,
     required this.chronicle,
   });
@@ -115,7 +115,7 @@ class AnimalCard {
         discoveredBy: json['discovered_by'] as String,
         discoveredByMe: json['discovered_by_me'] as bool,
         coat: json['coat'] as String?,
-        coatFact: json['coat_fact'] as String?,
+        coatFacts: (json['coat_facts'] as List).cast<String>(),
         breed: json['breed'] == null ? null : BreedInfo.fromJson(json['breed'] as Map<String, dynamic>),
         chronicle: (json['chronicle'] as List)
             .map((e) => ChronicleEntry.fromJson(e as Map<String, dynamic>))
@@ -126,7 +126,7 @@ class AnimalCard {
   final String discoveredBy;
   final bool discoveredByMe;
   final String? coat;
-  final String? coatFact;
+  final List<String> coatFacts;
 
   /// Only when the server was confident; null for mixed breed.
   final BreedInfo? breed;

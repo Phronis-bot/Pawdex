@@ -38,7 +38,8 @@ void main() {
     expect(find.text('Discovered by Sleepy Mango'), findsOneWidget);
     expect(find.textContaining('Seen 2 times'), findsOneWidget);
 
-    await tester.scrollUntilVisible(find.text('Did you know?'), 200);
+    await tester.scrollUntilVisible(find.text('In Japan calicos are considered lucky.'), 200);
+    expect(find.text('Did you know?'), findsOneWidget);
     expect(find.text('Calico cats are almost always female.'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('by you'), 200);
     expect(find.text('by Sleepy Mango'), findsOneWidget);

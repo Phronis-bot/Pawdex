@@ -294,6 +294,11 @@ BREEDS: dict[Species, dict[str, Breed]] = {
             "Australian Shepherd", "USA",
             "Despite its name, it was developed on ranches in the western United States.",
         ),
+        "portuguese_water_dog": Breed(
+            "Portuguese Water Dog", "Portugal",
+            "A fishermen's dog that herded fish into nets, retrieved lost gear and swam messages "
+            "between boats. Bo and Sunny, the Obama family's dogs, were Portuguese Water Dogs.",
+        ),
         "border_collie": Breed(
             "Border Collie", "United Kingdom",
             "A sheepdog from the border between England and Scotland, often called the most "

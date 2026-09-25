@@ -46,7 +46,7 @@ class AnimalCard(AnimalOut):
     discovered_by: str  # discoverer's nickname
     discovered_by_me: bool
     coat: str | None
-    coat_fact: str | None
+    coat_facts: list[str]
     # Only on the card, never in map/zone/candidate responses.
     breed: BreedOut | None
     # Oldest first; photos via GET /sightings/{sighting_id}/photo.
@@ -102,7 +102,7 @@ def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalC
         discovered_by=animal.discoverer.nickname,
         discovered_by_me=animal.discoverer_id == user_id,
         coat=coat.label if coat else None,
-        coat_fact=coat.fact if coat else None,
+        coat_facts=list(coat.facts) if coat else [],
         breed=BreedOut(name=breed.label, origin=breed.origin, history=breed.history) if breed else None,
         chronicle=[
             ChronicleEntry(sighting_id=sid, created_at=at, by=nickname, by_me=uid == user_id)

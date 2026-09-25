@@ -105,13 +105,34 @@ class _CardBody extends StatelessWidget {
             ),
           ),
         ],
-        if (card.coatFact case final fact?) ...[
+        if (card.coatFacts.isNotEmpty) ...[
           const SizedBox(height: 16),
           Card(
-            child: ListTile(
-              leading: const Icon(Icons.lightbulb_outline),
-              title: const Text('Did you know?'),
-              subtitle: Text(fact),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.lightbulb_outline),
+                      const SizedBox(width: 12),
+                      Text('Did you know?', style: text.titleMedium),
+                    ],
+                  ),
+                  for (final fact in card.coatFacts)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('•  '),
+                          Expanded(child: Text(fact)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ],

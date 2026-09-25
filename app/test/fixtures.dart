@@ -35,7 +35,11 @@ Map<String, dynamic> cardJson({
       'discovered_by': 'Sleepy Mango',
       'discovered_by_me': false,
       'coat': 'Calico',
-      'coat_fact': 'Calico cats are almost always female.',
+      'coat_facts': [
+        'Calico cats are almost always female.',
+        'The patches are random.',
+        'In Japan calicos are considered lucky.',
+      ],
       'breed': breed,
       'chronicle': [
         {'sighting_id': 's1', 'created_at': '2026-09-20T10:00:00Z', 'by': 'Sleepy Mango', 'by_me': false},
