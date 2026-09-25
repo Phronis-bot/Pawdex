@@ -2,12 +2,13 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    HF_HOME=/data/hf
+    HF_HOME=/data/hf \
+    TORCH_HOME=/data/torch
 
 WORKDIR /srv/api
 
 # CPU-only torch: the default wheel pulls in ~2 GB of CUDA libraries we don't need.
-RUN pip install --no-cache-dir torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cpu
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

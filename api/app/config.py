@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     # Minimum probability of the winning cat/dog group to accept the photo as an animal.
     min_animal_confidence: float = 0.5
 
+    # Finding the animal in the photo (app/segment.py).
+    segment_max_side: int = 640
+    segment_min_score: float = 0.5
+    # Stored photos get everything but the animal blurred (radius as a fraction of the
+    # longest side), so shop signs and house numbers don't reveal where it lives.
+    blur_backgrounds: bool = True
+    blur_radius_fraction: float = 0.02
+
     # Re-identification of individual animals. See eval/reid_eval.py for how the
     # model and thresholds were chosen.
     embedding_model: str = "dinov2"  # "clip" or "dinov2"
