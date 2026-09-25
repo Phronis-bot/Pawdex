@@ -96,52 +96,36 @@ class _CardBody extends StatelessWidget {
         Text(card.discoveredByMe ? 'Discovered by you' : 'Discovered by ${card.discoveredBy}'),
         Text('Seen $seen ${seen == 1 ? 'time' : 'times'} · first on ${_date(card.chronicle.first.createdAt)}'),
         const SizedBox(height: 16),
-        Card(
-          child: switch (card.breed) {
-            final breed? => ListTile(
-                leading: const Icon(Icons.public),
-                title: Text('${breed.name} · from ${breed.origin}'),
-                subtitle: Text(breed.history),
-              ),
-            null => ListTile(
-                leading: const Icon(Icons.pets),
-                title: const Text('Mixed breed'),
-                subtitle: Text(
+        switch (card.breed) {
+          final breed? => _InfoCard(
+              icon: Icons.public,
+              title: '${breed.name} · from ${breed.origin}',
+              children: [
+                Text(breed.history),
+                const SizedBox(height: 12),
+                Text('Relatives & look-alikes', style: text.titleSmall),
+                const SizedBox(height: 4),
+                Text(breed.relatives),
+                for (final fact in breed.facts) _Bullet(fact),
+              ],
+            ),
+          null => _InfoCard(
+              icon: Icons.pets,
+              title: 'Mixed breed',
+              children: [
+                Text(
                   'No pedigree, like most street ${speciesWord(animal.species)}s in the world — '
                   'which makes every one of them one of a kind.',
                 ),
-              ),
-          },
-        ),
+              ],
+            ),
+        },
         if (card.coatFacts.isNotEmpty) ...[
           const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.lightbulb_outline),
-                      const SizedBox(width: 12),
-                      Text('Did you know?', style: text.titleMedium),
-                    ],
-                  ),
-                  for (final fact in card.coatFacts)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('•  '),
-                          Expanded(child: Text(fact)),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
+          _InfoCard(
+            icon: Icons.lightbulb_outline,
+            title: card.coat == null ? 'Did you know?' : 'Did you know? · ${card.coat} coat',
+            children: [for (final fact in card.coatFacts) _Bullet(fact)],
           ),
         ],
         const SizedBox(height: 16),
@@ -178,4 +162,52 @@ class _CardBody extends StatelessWidget {
 
   static String _date(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({required this.icon, required this.title, required this.children});
+
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon),
+                const SizedBox(width: 12),
+                Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Bullet extends StatelessWidget {
+  const _Bullet(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [const Text('•  '), Expanded(child: Text(text))],
+      ),
+    );
+  }
 }

@@ -40,6 +40,8 @@ class BreedOut(BaseModel):
     name: str
     origin: str
     history: str
+    relatives: str
+    facts: list[str]
 
 
 class AnimalCard(AnimalOut):
@@ -103,7 +105,13 @@ def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalC
         discovered_by_me=animal.discoverer_id == user_id,
         coat=coat.label if coat else None,
         coat_facts=list(coat.facts) if coat else [],
-        breed=BreedOut(name=breed.label, origin=breed.origin, history=breed.history) if breed else None,
+        breed=BreedOut(
+            name=breed.label,
+            origin=breed.origin,
+            history=breed.history,
+            relatives=breed.relatives,
+            facts=list(breed.facts),
+        ) if breed else None,
         chronicle=[
             ChronicleEntry(sighting_id=sid, created_at=at, by=nickname, by_me=uid == user_id)
             for sid, at, uid, nickname in entries

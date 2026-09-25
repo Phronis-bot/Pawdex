@@ -19,6 +19,8 @@ def test_breed_table_is_complete():
         assert MIXED_PROMPTS[species]
         for key, breed in breeds.items():
             assert breed.label and breed.origin and len(breed.history) > 30, key
+            assert len(breed.relatives) > 20, key
+            assert len(breed.facts) >= 2 and all(len(f) > 15 for f in breed.facts), key
 
 
 @pytest.mark.parametrize(
@@ -60,6 +62,8 @@ def test_breed_is_on_the_card_only(fake_embedder):
     card = client.get(f"/animals/{animal_id}", headers=player).json()
     assert card["breed"]["name"] == "Labrador Retriever"
     assert "Newfoundland" in card["breed"]["history"]
+    assert "Golden" in card["breed"]["relatives"]
+    assert len(card["breed"]["facts"]) == 2
 
     # Nowhere else: not in the upload result, the map, the zone list or as a candidate.
     fake_embedder.queue.append(vector_with_similarity(0.6))

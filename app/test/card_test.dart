@@ -11,6 +11,14 @@ import 'package:pawdex/share_card.dart';
 
 import 'fixtures.dart';
 
+const siamese = {
+  'name': 'Siamese',
+  'origin': 'Thailand',
+  'history': 'One of the oldest known breeds.',
+  'relatives': 'Cousin of the Birman.',
+  'facts': ['Very talkative.', 'Points darken in the cold.'],
+};
+
 void main() {
   test('animal card parses discoverer, coat and chronicle', () {
     final card = AnimalCard.fromJson(cardJson());
@@ -41,7 +49,7 @@ void main() {
     expect(find.textContaining('Seen 2 times'), findsOneWidget);
 
     await tester.scrollUntilVisible(find.text('In Japan calicos are considered lucky.'), 200, scrollable: page);
-    expect(find.text('Did you know?'), findsOneWidget);
+    expect(find.text('Did you know? · Calico coat'), findsOneWidget);
     expect(find.text('Calico cats are almost always female.'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('by you'), 200, scrollable: page);
     expect(find.text('by Sleepy Mango'), findsOneWidget);
@@ -57,17 +65,20 @@ void main() {
       );
       await tester.pumpWidget(MaterialApp(home: AnimalCardScreen(key: UniqueKey(), api: api, animalId: 'mo')));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('Did you know?'), 200);
+      await tester.scrollUntilVisible(
+        find.text('Did you know? · Calico coat'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
     }
 
-    await open(cardJson(breed: {
-      'name': 'Siamese',
-      'origin': 'Thailand',
-      'history': 'One of the oldest known breeds.',
-    }));
+    await open(cardJson(breed: siamese));
     expect(find.text('Cat · Siamese · Calico'), findsOneWidget);
     expect(find.text('Siamese · from Thailand'), findsOneWidget);
     expect(find.text('One of the oldest known breeds.'), findsOneWidget);
+    expect(find.text('Relatives & look-alikes'), findsOneWidget);
+    expect(find.text('Cousin of the Birman.'), findsOneWidget);
+    expect(find.text('Very talkative.'), findsOneWidget);
 
     await open(cardJson());
     expect(find.textContaining('from Thailand'), findsNothing);
@@ -90,11 +101,7 @@ void main() {
     expect(find.text('Cat · Mixed breed · Calico'), findsOneWidget);
     expect(find.text('Seen 2 times · discovered by Sleepy Mango'), findsOneWidget);
 
-    final withBreed = AnimalCard.fromJson(cardJson(breed: {
-      'name': 'Siamese',
-      'origin': 'Thailand',
-      'history': 'One of the oldest known breeds.',
-    }));
+    final withBreed = AnimalCard.fromJson(cardJson(breed: siamese));
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: ShareCard(card: withBreed, photo: photo))));
     expect(find.text('Cat · Siamese · Calico'), findsOneWidget);
     expect(find.text('from Thailand'), findsOneWidget);

@@ -44,7 +44,8 @@ class Settings(BaseSettings):
     # A breed is shown only if CLIP gives it at least this probability and it beats
     # "mixed breed". Tuned per species with eval/breed_eval.py: a false breed on a street
     # animal is worse than a missed one.
-    breed_min_confidence: dict[str, float] = {"cat": 0.7, "dog": 0.6}
+    # Cats need 0.8: below it, non-pedigree British street cats get labelled Scottish Fold.
+    breed_min_confidence: dict[str, float] = {"cat": 0.8, "dog": 0.6}
 
     # Map. Animals are shown only as H3 hexagon cells, never as points (rule 3: pets
     # get stolen). Resolution 9 hexagons are ~350 m across.

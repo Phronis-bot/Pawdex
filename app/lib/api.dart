@@ -85,17 +85,29 @@ class ChronicleEntry {
 }
 
 class BreedInfo {
-  BreedInfo({required this.name, required this.origin, required this.history});
+  BreedInfo({
+    required this.name,
+    required this.origin,
+    required this.history,
+    required this.relatives,
+    required this.facts,
+  });
 
   factory BreedInfo.fromJson(Map<String, dynamic> json) => BreedInfo(
         name: json['name'] as String,
         origin: json['origin'] as String,
         history: json['history'] as String,
+        relatives: json['relatives'] as String,
+        facts: (json['facts'] as List).cast<String>(),
       );
 
   final String name;
   final String origin;
   final String history;
+
+  /// Relatives and look-alikes.
+  final String relatives;
+  final List<String> facts;
 }
 
 /// Everything on an animal's card. Carries no location.

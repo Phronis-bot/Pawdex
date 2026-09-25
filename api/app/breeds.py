@@ -1,8 +1,11 @@
 """Breeds: detected with CLIP zero-shot, but only when the model is confident.
 
 Most street animals are mixed, so "mixed breed" competes with every breed and wins
-ties. A breed never changes rarity (that is by coat), and it is shown only on the
-animal's card, never on the map: purebred animals are the ones that get stolen.
+ties. A breed never changes rarity (that is by coat). It is shown on the animal's
+card and share image, never on the map: purebred animals are the ones that get stolen.
+
+Texts are for players: short, true, and hedged ("said to", "legend has it") where a
+story is folklore rather than documented history.
 """
 from dataclasses import dataclass
 from functools import lru_cache
@@ -21,6 +24,9 @@ class Breed:
     label: str
     origin: str
     history: str
+    # Relatives and look-alikes: who it's confused with and how they're related.
+    relatives: str
+    facts: tuple[str, ...]
     # CLIP prompt name when the label alone is ambiguous.
     prompt_name: str | None = None
     # False for breeds that look like ordinary street animals (e.g. American Shorthair):
@@ -46,367 +52,792 @@ BREEDS: dict[Species, dict[str, Breed]] = {
     Species.cat: {
         "siamese": Breed(
             "Siamese", "Thailand",
-            "One of the oldest known breeds: pointed cats appear in the Tamra Maew, old cat poems "
-            "from Siam (today's Thailand). They reached Europe and America in the 1870s–1880s.",
+            "Pointed cats appear in the Tamra Maew, cat poems from the old kingdom of Siam (today's "
+            "Thailand), written some time between the 14th and 18th centuries. Siamese reached Britain "
+            "and the USA in the 1870s–1880s; many early ones had crossed eyes and kinked tails, traits "
+            "breeders later bred out.",
+            "Its colour-point gene lives on in the Birman, Ragdoll, Himalayan and Russia's Neva "
+            "Masquerade. The Oriental Shorthair is essentially a Siamese in solid colours.",
+            (
+                "Siamese are famously talkative, with a loud, low voice.",
+                "Their points darken with age and in cold weather: the pigment enzyme only works in cooler skin.",
+            ),
         ),
         "khao_manee": Breed(
             "Khao Manee", "Thailand",
-            "An all-white Thai cat whose name means 'white gem'. It is also described in the "
-            "Tamra Maew and often has eyes of two different colours.",
+            "An all-white cat kept in Thailand for centuries and described in the Tamra Maew. Its name "
+            "means 'white gem'. It was almost unknown outside Thailand until the late 20th century.",
+            "Easily confused with any white street cat — only a pedigree tells them apart.",
+            (
+                "Odd-coloured eyes, one blue and one gold, are especially prized.",
+                "Like other white cats with blue eyes, some are born deaf.",
+            ),
             detectable=False,
         ),
         "korat": Breed(
             "Korat", "Thailand",
-            "A silver-blue cat from north-eastern Thailand, traditionally a symbol of good luck "
-            "and given as a wedding gift.",
+            "From the Korat plateau of north-eastern Thailand, and also described in the Tamra Maew. "
+            "Traditionally a symbol of good luck, given as a gift to newlyweds.",
+            "Looks like a Russian Blue or Chartreux, but has a heart-shaped face and bright green eyes.",
+            (
+                "Its silver-tipped blue coat is compared to rain clouds, a good omen for rice farmers.",
+                "Korat kittens' eyes start amber and turn green over two to four years.",
+            ),
             detectable=False,
         ),
         "birman": Breed(
             "Birman", "Myanmar (legend) · France",
-            "Linked by legend to temples of Burma, the breed was developed in France in the 1920s. "
-            "Look for its white 'gloves' on all four paws.",
+            "Legend says the 'Sacred Cat of Burma' guarded a temple, and its paws turned white where "
+            "they touched a dying priest. The breed itself was developed in France in the 1920s.",
+            "Shares its colour points with the Siamese and looks like a smaller Ragdoll — but only the "
+            "Birman has pure white 'gloves' on all four paws.",
+            (
+                "Birman kittens are born completely white.",
+                "Like all French pedigree animals, French-born Birmans get names starting with that "
+                "year's letter of the alphabet.",
+            ),
         ),
         "burmese": Breed(
             "Burmese", "Myanmar · USA",
-            "Almost every Burmese descends from Wong Mau, a brown cat brought from Burma to the "
-            "United States in 1930.",
+            "Almost every Burmese traces back to Wong Mau, a brown cat brought from Burma to San "
+            "Francisco in 1930. She was probably a Siamese–Burmese hybrid.",
+            "A cousin of the Siamese; crossing the two gives the Tonkinese.",
+            (
+                "Burmese feel heavy for their size — 'bricks wrapped in silk', as breeders say.",
+                "American and European Burmese are bred to different looks: rounder heads in the USA.",
+            ),
         ),
         "japanese_bobtail": Breed(
             "Japanese Bobtail", "Japan",
-            "Known in Japan for centuries, with a short pom-pom tail. The beckoning 'maneki-neko' "
-            "lucky cat is often said to be one.",
+            "Short-tailed cats have lived in Japan for centuries and appear in old woodblock prints. In "
+            "1602 an edict ordered cats in Kyoto to be set free to protect silkworms from mice.",
+            "The Kurilian Bobtail is another natural short-tailed cat from the region; the Manx's "
+            "short tail comes from an unrelated gene.",
+            (
+                "Every Bobtail's tail is unique, kinked and curled like a pom-pom.",
+                "The beckoning maneki-neko lucky cat is often said to be a Japanese Bobtail.",
+            ),
             detectable=False,
         ),
         "persian": Breed(
             "Persian", "Iran",
-            "Long-haired cats from Persia reached Europe in the 1600s. Today's flat-faced look was "
-            "bred much later, in the 20th century.",
+            "Long-haired cats from Persia (today's Iran) reached Europe in the 1600s, brought by "
+            "travellers such as Pietro della Valle. Queen Victoria kept Persians and made them "
+            "fashionable. The very flat face seen today was bred much later, in the 20th century.",
+            "The Exotic Shorthair is a short-haired Persian; the Himalayan is a colour-point Persian.",
+            (
+                "A Persian's long coat needs daily brushing — it can't keep it tidy alone.",
+                "Very flat-faced Persians can have breathing and eye problems, so many breeders now "
+                "aim for a gentler face.",
+            ),
         ),
         "turkish_van": Breed(
             "Turkish Van", "Turkey",
-            "From the Lake Van region of eastern Turkey. Mostly white with colour on the head and "
-            "tail, and famous for actually enjoying water.",
+            "From the Lake Van region of eastern Turkey, where such cats have lived for centuries. "
+            "Two British travellers brought the first ones to Europe in 1955.",
+            "Its pattern — white body, coloured head and tail — is called 'van pattern' in any breed.",
+            (
+                "Famous for enjoying water; locals call them swimming cats.",
+                "Its coat has no woolly undercoat, so it feels like cashmere and dries quickly.",
+            ),
             detectable=False,
         ),
         "turkish_angora": Breed(
             "Turkish Angora", "Turkey",
-            "One of the oldest long-haired breeds, from the Ankara region. Ankara Zoo has run a "
-            "breeding programme for pure white Angoras since 1917.",
+            "One of the oldest long-haired breeds, named after Ankara (once called Angora). Ankara Zoo "
+            "has bred pure white Angoras since 1917 to keep the breed alive.",
+            "Sometimes confused with the Persian, but slimmer, with a silky single coat.",
+            (
+                "Pure white Angoras with odd-coloured eyes are especially prized in Turkey.",
+                "Its fine coat has no undercoat, so it hardly mats.",
+            ),
             detectable=False,
         ),
         "aegean": Breed(
             "Aegean", "Greece",
-            "A natural breed from Greece's Cyclades islands: harbour cats long used to living on "
-            "fishermen's scraps.",
+            "A natural breed from Greece's Cyclades islands, where harbour cats have lived alongside "
+            "fishermen for centuries. Greek breeders began developing it in the 1990s.",
+            "It looks like many Mediterranean street cats — because that's exactly where it comes from.",
+            (
+                "Aegeans are said to like water and even catch fish in shallow harbours.",
+                "Most are white with patches of one or two other colours.",
+            ),
             detectable=False,
         ),
         "british_shorthair": Breed(
             "British Shorthair", "United Kingdom",
-            "Descended from Britain's street and farm cats. British Shorthairs were among the cats "
-            "at the first modern cat show, held in London in 1871.",
+            "Descended from Britain's street and farm cats, possibly brought by the Romans. British "
+            "Shorthairs were among the cats at the first modern cat show, London's Crystal Palace, 1871.",
+            "The Scottish Fold is its folded-ear cousin; the Chartreux and Russian Blue look similar "
+            "but are separate breeds.",
+            (
+                "The famous blue-grey 'British Blue' is only one of dozens of colours.",
+                "The Cheshire Cat of Alice in Wonderland is often linked to its round, 'smiling' face.",
+            ),
             # Downing Street's (non-pedigree) cats were all labelled British Shorthair.
             detectable=False,
         ),
         "scottish_fold": Breed(
             "Scottish Fold", "United Kingdom (Scotland)",
-            "All Scottish Folds trace back to Susie, a farm cat found in Scotland in 1961. The gene "
-            "that folds the ears also affects cartilage and can cause painful joint disease.",
+            "All Scottish Folds trace back to Susie, a white barn cat with folded ears found near Coupar "
+            "Angus, Scotland, in 1961 by a shepherd called William Ross.",
+            "Folds are crossed with British and American Shorthairs; kittens with straight ears are "
+            "called Scottish Straights.",
+            (
+                "Kittens are born with straight ears; the fold appears at about three weeks.",
+                "The gene that folds the ears affects cartilage everywhere and causes painful joint "
+                "disease, so breeding Folds is banned or discouraged in several countries.",
+            ),
         ),
         "russian_blue": Breed(
             "Russian Blue", "Russia",
-            "Said to come from the port of Arkhangelsk; it was shown in England in 1875 as the "
-            "'Archangel Cat'. Its short coat is silvery blue-grey.",
+            "Said to come from the port of Arkhangelsk in northern Russia; sailors brought them to "
+            "Britain, where they were shown at the Crystal Palace in 1875 as the 'Archangel Cat'.",
+            "Often confused with the Korat, Chartreux and British Blue — look for its green eyes and "
+            "slim, elegant build.",
+            (
+                "Its dense double coat stands out from the body like plush.",
+                "Upturned mouth corners give it a slight 'smile'.",
+            ),
             detectable=False,
         ),
         "siberian": Breed(
             "Siberian", "Russia",
-            "Russia's native forest cat, with a thick three-layer coat made for Siberian winters.",
+            "Russia's native forest cat, living for centuries on farms and in villages near Siberian "
+            "forests. The first breed standard was written in Russia in 1987; the first ones reached "
+            "the USA in 1990.",
+            "Close to the Norwegian Forest Cat and Maine Coon; its colour-point version is the Neva Masquerade.",
+            (
+                "Its three-layer coat is made for Siberian winters.",
+                "Siberians tend to produce less of the main cat allergen, so some allergic people react "
+                "less — but no cat is truly hypoallergenic.",
+            ),
             detectable=False,
         ),
         "neva_masquerade": Breed(
             "Neva Masquerade", "Russia",
-            "A colour-point Siberian developed in St Petersburg and named after the Neva river.",
+            "A colour-point Siberian developed in St Petersburg in the late 1980s and named after the "
+            "city's Neva river.",
+            "A Siberian by build, with the Siamese's colour points — a 'mask' on the face.",
+            (
+                "Like all colour-points, its mask darkens with age and in the cold.",
+                "Its blue eyes are part of the breed standard.",
+            ),
         ),
         "kurilian_bobtail": Breed(
             "Kurilian Bobtail", "Russia",
-            "A natural bobtail from the Kuril Islands and Sakhalin, with a short fluffy tail like a pom-pom.",
+            "A natural bobtail from the Kuril Islands and Sakhalin, between Russia and Japan. Locals "
+            "value it as a skilled mouser and even a fisher.",
+            "Looks like a stockier, shaggier Japanese Bobtail.",
+            (
+                "No two tails are alike: each is a unique kinked pom-pom.",
+                "Unusually for cats, many enjoy water.",
+            ),
             detectable=False,
         ),
         "maine_coon": Breed(
             "Maine Coon", "USA",
-            "One of the largest house cats, a working farm cat from the north-eastern United States "
-            "and the official state cat of Maine.",
+            "One of the oldest natural breeds of North America, a working farm and ship's cat from Maine. "
+            "A Maine Coon named Cosey won the first big US cat show, at Madison Square Garden in 1895.",
+            "Looks like the Norwegian Forest Cat and Siberian. The old tale that it's part raccoon is "
+            "genetically impossible.",
+            (
+                "One of the largest house-cat breeds; males can weigh over 8 kg.",
+                "Big tufted paws work like snowshoes.",
+            ),
         ),
         "american_shorthair": Breed(
             "American Shorthair", "USA",
-            "Descends from cats that sailed with European settlers to keep ships and farms free of rodents.",
+            "Descends from cats that sailed with European settlers to guard ships and farms against "
+            "rodents; recognised as a breed in the early 1900s.",
+            "Compared with the British Shorthair it's lighter and longer-legged.",
+            (
+                "The classic silver tabby is its best-known look.",
+                "It's one of the most popular pedigree cats in the USA.",
+            ),
             detectable=False,
         ),
         "ragdoll": Breed(
             "Ragdoll", "USA",
-            "Developed in California in the 1960s; named for its habit of going limp when picked up.",
+            "Developed in California in the 1960s by breeder Ann Baker, starting from a white "
+            "long-haired cat named Josephine.",
+            "Looks like a larger Birman; both carry the colour-point gene.",
+            (
+                "Named for its habit of going limp when picked up.",
+                "Kittens are born white and can take up to three years to reach full colour.",
+            ),
         ),
         "sphynx": Breed(
             "Sphynx", "Canada",
-            "The breed began with a hairless kitten born in Toronto in 1966. It isn't truly bald: "
-            "a fine down covers the skin.",
+            "Began with Prune, a hairless kitten born in Toronto in 1966 to an ordinary "
+            "black-and-white cat.",
+            "Russia's Donskoy and Peterbald are hairless too, but from a different gene.",
+            (
+                "Not truly bald: a fine down makes the skin feel like warm suede.",
+                "With no fur to soak up skin oils, a Sphynx needs regular baths.",
+            ),
         ),
         "bengal": Breed(
             "Bengal", "USA",
-            "A hybrid of domestic cats and the wild Asian leopard cat, developed in the United "
-            "States from the 1970s — hence the wild-looking spots.",
+            "A hybrid of domestic cats and the wild Asian leopard cat, developed in the USA from the "
+            "1970s by breeder Jean Mill.",
+            "Its spots look like the Egyptian Mau's, but a Bengal's come from wild ancestry.",
+            (
+                "Many Bengals have 'glitter' — coat hairs that shimmer in the light.",
+                "Pet Bengals are several generations away from the wild cat; early hybrids are "
+                "restricted in some places.",
+            ),
         ),
         "abyssinian": Breed(
             "Abyssinian", "Ethiopia (name) · Southeast Asia (genes)",
             "Named after Abyssinia (today's Ethiopia): a cat called Zula was brought to England from "
             "there in 1868. Genetic studies, though, point to origins around the Indian Ocean coast.",
+            "The Somali is a long-haired Abyssinian.",
+            (
+                "Each hair is 'ticked' with bands of colour, giving a wild, rabbit-like shimmer.",
+                "It resembles the cats painted in ancient Egyptian art.",
+            ),
             detectable=False,
         ),
         "egyptian_mau": Breed(
             "Egyptian Mau", "Egypt",
-            "One of the few naturally spotted domestic breeds, and among the fastest runners of all house cats.",
+            "One of the few naturally spotted domestic breeds. Modern Maus descend from cats taken from "
+            "Cairo to Italy and then the USA in the 1950s by the exiled Russian princess Nathalie Troubetzkoy.",
+            "Its spots are natural, unlike the hybrid Bengal's.",
+            (
+                "Among the fastest house cats — reportedly up to 48 km/h.",
+                "'Mau' simply means 'cat' in ancient Egyptian.",
+            ),
             detectable=False,
         ),
         "norwegian_forest": Breed(
             "Norwegian Forest Cat", "Norway",
-            "The 'skogkatt' of Norwegian folk tales, with a thick water-repellent coat for Nordic winters.",
+            "The 'skogkatt' of Norwegian folk tales, possibly descended from cats that sailed with the "
+            "Vikings. King Olav V made it Norway's official cat.",
+            "Often confused with the Maine Coon and Siberian — look for its triangular face and "
+            "straight profile.",
+            (
+                "Its water-repellent double coat was built for Nordic winters.",
+                "It's said to climb down trees head-first, which most cats can't.",
+            ),
             detectable=False,
         ),
         "exotic_shorthair": Breed(
             "Exotic Shorthair", "USA",
-            "A Persian crossed with shorter-haired cats in the 1960s: all the Persian's looks with an "
-            "easy-care coat, nicknamed 'the Persian in pyjamas'.",
+            "Created in the USA in the 1950s–60s by crossing Persians with American Shorthairs.",
+            "A Persian in everything but coat length.",
+            (
+                "Nicknamed 'the lazy man's Persian' for its easy-care coat.",
+                "Garfield is often said to look like one.",
+            ),
         ),
         "devon_rex": Breed(
             "Devon Rex", "United Kingdom (England)",
-            "Began with a curly-coated kitten found in Devon in 1960. Wavy fur, big ears, pixie face.",
+            "Began with Kirlee, a curly-coated kitten found in Buckfastleigh, Devon, in 1960.",
+            "Looks like the Cornish Rex, but its curls come from a different gene.",
+            (
+                "Big ears, huge eyes and a pixie face earned it the nickname 'pixie cat'.",
+                "Its short wavy coat sheds less than most cats'.",
+            ),
         ),
         "munchkin": Breed(
             "Munchkin", "USA",
-            "Its short legs come from a natural mutation; the modern breed started with a cat found "
-            "in Louisiana in 1983.",
+            "Short-legged cats had been reported for decades, but the modern breed started with "
+            "Blackberry, a cat found in Louisiana in 1983.",
+            "Named after the Munchkins of The Wizard of Oz.",
+            (
+                "Its short legs come from a natural mutation; Munchkins still run and climb, just less high.",
+                "The breed is controversial, and some cat registries don't recognise it.",
+            ),
             detectable=False,
         ),
         "chartreux": Breed(
             "Chartreux", "France",
-            "A sturdy blue-grey French cat; a popular legend links it to the Carthusian monks.",
+            "A sturdy blue-grey cat known in France for centuries; a popular legend links it to the "
+            "Carthusian monks of the Grande Chartreuse monastery.",
+            "Often confused with the British Blue and Russian Blue — look for its copper eyes and "
+            "'smiling' face.",
+            (
+                "President Charles de Gaulle is said to have owned one.",
+                "Its woolly coat is slightly water-repellent.",
+            ),
             detectable=False,
         ),
     },
     Species.dog: {
         "labrador": Breed(
             "Labrador Retriever", "Canada · United Kingdom",
-            "Descends from the St. John's water dogs of Newfoundland that helped fishermen haul "
-            "nets; the breed was refined in Britain in the 1800s.",
+            "Descends from the St. John's water dogs of Newfoundland, which helped fishermen haul nets "
+            "and fetch fish that slipped off the hooks. English nobles imported them in the 1800s and "
+            "refined the breed in Britain.",
+            "A cousin of the Golden, Flat-coated and Chesapeake Bay Retrievers.",
+            (
+                "Its thick 'otter tail' works as a rudder when swimming.",
+                "Black, yellow and chocolate puppies can all be born in the same litter.",
+            ),
         ),
         "golden_retriever": Breed(
             "Golden Retriever", "United Kingdom (Scotland)",
-            "Developed in the Scottish Highlands in the 1860s by Lord Tweedmouth as a gun dog "
-            "that could retrieve from water and land.",
+            "Developed in the Scottish Highlands in the 1860s by Lord Tweedmouth, starting with a "
+            "yellow retriever called Nous and a Tweed Water Spaniel called Belle.",
+            "A cousin of the Labrador and Flat-coated Retriever.",
+            (
+                "Its 'soft mouth' is said to carry an egg without breaking it.",
+                "Goldens are among the world's most popular guide and therapy dogs.",
+            ),
         ),
         "german_shepherd": Breed(
             "German Shepherd", "Germany",
             "Bred from Germany's old working sheepdogs. In 1899 cavalry officer Max von Stephanitz "
             "registered the first one, Horand von Grafrath, and set out to create the ideal herding "
             "dog; it soon became the world's classic police and service dog.",
+            "A cousin — not a descendant — of the Belgian Malinois: both come from the herding dogs "
+            "of 19th-century continental Europe and were developed at almost the same time.",
+            (
+                "In Britain it was renamed 'Alsatian' during the First World War to avoid the word 'German'.",
+                "Rin Tin Tin, a puppy rescued from a First World War battlefield, became a Hollywood star.",
+            ),
+        ),
+        "belgian_malinois": Breed(
+            "Belgian Malinois", "Belgium",
+            "One of four varieties of Belgian Shepherd, named after the city of Mechelen (Malines). "
+            "Belgium's shepherd dogs were first described as a breed in 1891–1892 by Professor "
+            "Adolphe Reul.",
+            "A cousin of the German Shepherd, often mistaken for one: lighter, with a short fawn coat "
+            "and a black mask.",
+            (
+                "Today it's the favourite dog of many police and military units worldwide.",
+                "A Malinois named Cairo took part in the 2011 raid on Osama bin Laden's compound.",
+            ),
+            prompt_name="Belgian Malinois shepherd",
         ),
         "siberian_husky": Breed(
             "Siberian Husky", "Russia (Siberia)",
-            "Bred by the Chukchi people of north-eastern Siberia as sled dogs. Huskies became famous "
-            "in the 1925 'serum run' carrying diphtheria medicine to Nome, Alaska.",
+            "Bred by the Chukchi people of north-eastern Siberia to pull light sleds over long "
+            "distances. Huskies came to Alaska in 1908 for sled races.",
+            "Often confused with the bigger Alaskan Malamute; the Samoyed and Laika are fellow "
+            "Siberian spitz dogs.",
+            (
+                "In the 1925 'serum run', sled teams carried diphtheria medicine to Nome, Alaska; lead "
+                "dogs Togo and Balto became heroes.",
+                "Blue eyes, brown eyes or one of each are all normal for Huskies.",
+            ),
         ),
         "alaskan_malamute": Breed(
             "Alaskan Malamute", "USA (Alaska)",
-            "A heavy freight sled dog of the Mahlemiut Inuit of Alaska, built for strength rather than speed.",
+            "An ancient freight sled dog of the Mahlemiut Inupiat people of Alaska, built for "
+            "strength rather than speed.",
+            "Bigger and heavier than the Siberian Husky, and always with brown eyes.",
+            (
+                "Malamutes hauled supplies for Richard Byrd's Antarctic expeditions.",
+                "It's the official state dog of Alaska.",
+            ),
         ),
         "samoyed": Breed(
             "Samoyed", "Russia (Siberia)",
-            "Named after the Samoyedic peoples of Siberia, who used these white dogs to herd reindeer "
-            "and pull sledges. Their upturned mouth is the 'Sammy smile'.",
+            "Named after the Samoyedic peoples of Siberia, such as the Nenets, who used these white "
+            "dogs to herd reindeer, pull sleds and keep warm at night.",
+            "A Siberian spitz, like the Husky and the Laika.",
+            (
+                "Its upturned mouth — the 'Sammy smile' — is said to keep drool from freezing into icicles.",
+                "Samoyeds pulled sledges on polar expeditions, including Roald Amundsen's journey to the South Pole.",
+            ),
         ),
         "laika": Breed(
             "Laika", "Russia",
-            "A family of Russian hunting spitz dogs. The famous space dog Laika, first animal to "
-            "orbit the Earth in 1957, was actually a mixed-breed stray from the streets of Moscow.",
+            "A family of Russian and Siberian hunting spitz dogs, such as the West and East Siberian "
+            "Laika, used to hunt everything from squirrels to bears.",
+            "A cousin of the Husky and Samoyed.",
+            (
+                "The space dog Laika, first animal to orbit the Earth in 1957, was actually a "
+                "mixed-breed stray from the streets of Moscow.",
+                "Laikas hunt by barking to hold game in place until the hunter arrives.",
+            ),
             prompt_name="West Siberian Laika",
         ),
         "caucasian_shepherd": Breed(
             "Caucasian Shepherd", "Caucasus",
-            "A huge livestock guardian from the mountains of Georgia, Armenia, Azerbaijan and southern "
-            "Russia, bred to protect flocks from wolves.",
+            "An ancient livestock guardian from the mountains of Georgia, Armenia, Azerbaijan and "
+            "southern Russia, bred to protect flocks from wolves and bears.",
+            "A cousin of the Central Asian Shepherd (Alabai) and Turkey's Kangal.",
+            (
+                "One of the largest dog breeds; males can weigh more than 70 kg.",
+                "In East Germany these dogs patrolled the Berlin Wall.",
+            ),
         ),
         "alabai": Breed(
             "Central Asian Shepherd (Alabai)", "Central Asia",
-            "An ancient guardian of herds across Central Asia. In Turkmenistan the alabai is a "
-            "national treasure with its own public holiday.",
+            "An ancient guardian of herds and caravans across Central Asia, shaped by nomads over "
+            "thousands of years.",
+            "A cousin of the Caucasian Shepherd and the Kangal.",
+            (
+                "In Turkmenistan the alabai is a national treasure with its own public holiday.",
+                "A giant golden statue of an alabai stands in Ashgabat, Turkmenistan's capital.",
+            ),
             prompt_name="Central Asian Shepherd dog",
         ),
         "kangal": Breed(
             "Kangal", "Turkey",
-            "Turkey's national dog, a livestock guardian from Sivas province with a black mask, "
+            "Turkey's national dog, a livestock guardian from Sivas province in central Anatolia, "
             "famous for protecting sheep from wolves.",
+            "Often grouped with the Anatolian Shepherd and the white Akbash; many Turkish street dogs "
+            "carry Kangal blood.",
+            (
+                "Its bite is often said to be among the strongest of all dogs.",
+                "In Namibia and Kenya, Kangals guard herds from cheetahs — which also saves cheetahs "
+                "from angry farmers.",
+            ),
             prompt_name="Kangal Anatolian Shepherd dog",
         ),
         "shiba_inu": Breed(
             "Shiba Inu", "Japan",
-            "The smallest of Japan's native spitz breeds, an ancient mountain hunting dog. It nearly "
-            "disappeared after the Second World War.",
+            "The smallest of Japan's six native spitz breeds, an ancient mountain hunting dog. After "
+            "the Second World War only three bloodlines survived; today's Shibas descend from them.",
+            "Looks like a small Akita; the Korean Jindo is a similar-looking neighbour.",
+            (
+                "When unhappy, Shibas let out a piercing 'Shiba scream'.",
+                "The 'Doge' meme made a Shiba named Kabosu one of the most famous dogs on Earth.",
+            ),
         ),
         "akita": Breed(
             "Akita", "Japan",
-            "From Akita prefecture in northern Japan. The most famous Akita, Hachikō, waited for his "
-            "late owner at Shibuya station every day for nearly ten years.",
+            "From Akita prefecture in northern Japan, once a hunting dog, now a national monument of Japan.",
+            "The American Akita is a heavier, separately bred version; the Shiba is its small cousin.",
+            (
+                "Hachikō waited for his late owner at Shibuya station every day for nearly ten years; "
+                "his statue stands there today.",
+                "Helen Keller brought the first Akita to the USA in 1937.",
+            ),
         ),
         "jindo": Breed(
             "Korean Jindo", "South Korea",
-            "From Jindo Island, a national treasure of Korea known for loyalty: in 1993 a Jindo named "
-            "Baekgu walked some 300 km back to her first home on the island.",
+            "From Jindo Island off south-west Korea; a national treasure of South Korea, protected by law.",
+            "Looks like the Shiba and Akita, but developed independently in Korea.",
+            (
+                "In 1993 a Jindo named Baekgu, sold to a new owner, walked some 300 km back to her "
+                "first home on the island.",
+                "Jindos are famously loyal to a single person.",
+            ),
         ),
         "phu_quoc_ridgeback": Breed(
             "Phu Quoc Ridgeback", "Vietnam",
-            "From Phú Quốc island. Along its back runs a ridge of hair growing the wrong way — it is "
-            "one of only three ridgeback breeds in the world.",
+            "From Phú Quốc island in southern Vietnam, a hunting and guard dog kept in isolation on "
+            "the island for centuries.",
+            "One of only three ridgeback breeds in the world, with the Thai and the Rhodesian Ridgeback.",
+            (
+                "Along its spine runs a ridge of hair growing the wrong way.",
+                "Many have webbed feet and are strong swimmers.",
+            ),
         ),
         "thai_ridgeback": Breed(
             "Thai Ridgeback", "Thailand",
-            "An ancient Thai hunting and guard dog, with a ridge of backward-growing hair along its spine.",
+            "An ancient hunting and guard dog of eastern Thailand, kept for centuries with little "
+            "mixing with other breeds.",
+            "A cousin of the Phu Quoc and Rhodesian Ridgebacks.",
+            (
+                "Its ridge comes in several shapes, from a simple stripe to a 'violin' or a 'feather'.",
+                "It's an excellent jumper.",
+            ),
         ),
         "hmong_dog": Breed(
             "H'Mông Dog", "Vietnam",
-            "A bob-tailed dog of the H'Mông people in the mountains of northern Vietnam, "
-            "traditionally used for hunting and guarding.",
+            "A bob-tailed dog of the H'Mông people in the mountains of northern Vietnam, used for "
+            "hunting and guarding villages. The Vietnam Kennel Association recognises it as a national breed.",
+            "Belongs to the same ancient Asian dog family as the region's village dogs.",
+            (
+                "Many are born with a naturally short tail.",
+                "Nimble climbers, at home on steep mountain terraces.",
+            ),
             prompt_name="H'Mong bobtail dog from Vietnam",
         ),
         "indian_pariah": Breed(
             "Indian Pariah Dog", "India",
-            "The native street dog of India and one of the oldest dog types on Earth, shaped by "
-            "natural selection rather than breeders.",
+            "The native street dog of the Indian subcontinent and one of the oldest dog types on "
+            "Earth, shaped by natural selection rather than breeders.",
+            "Part of the ancient 'village dog' family found across Asia and Africa.",
+            (
+                "Dogs like it appear in ancient Indian rock art.",
+                "Hardy and street-smart, they rarely suffer the inherited diseases common in pedigree breeds.",
+            ),
         ),
         "chihuahua": Breed(
             "Chihuahua", "Mexico",
-            "The world's smallest breed, named after the Mexican state of Chihuahua; it probably "
-            "descends from the ancient Techichi dogs of Mexico.",
+            "Named after the Mexican state of Chihuahua; it probably descends from the Techichi, a "
+            "small dog of the ancient Toltecs.",
+            "The world's smallest dog breed.",
+            (
+                "Some Chihuahuas keep a soft spot on the skull for life, like a human baby's.",
+                "A Chihuahua named Miracle Milly was the world's smallest living dog, under 10 cm tall.",
+            ),
         ),
         "pit_bull": Breed(
             "American Pit Bull Terrier", "USA",
-            "Descended from British bull-and-terrier dogs brought to the United States in the 1800s.",
+            "Descended from British bull-and-terrier dogs brought to the USA in the 1800s.",
+            "Related to the American Staffordshire Terrier and the Staffordshire Bull Terrier.",
+            (
+                "In the early 1900s it was a popular American family dog.",
+                "Many countries restrict it by law, though dog experts argue that upbringing matters "
+                "more than breed.",
+            ),
         ),
         "australian_shepherd": Breed(
             "Australian Shepherd", "USA",
-            "Despite its name, it was developed on ranches in the western United States.",
+            "Despite its name, it was developed on ranches in the western USA in the 1800s, possibly "
+            "from dogs that arrived with sheep from Australia.",
+            "A cousin of the Border Collie and other herding dogs.",
+            (
+                "Many have a marbled 'merle' coat and eyes of two different colours.",
+                "Aussies became famous as rodeo performers in the 1950s.",
+            ),
         ),
         "portuguese_water_dog": Breed(
             "Portuguese Water Dog", "Portugal",
             "A fishermen's dog that herded fish into nets, retrieved lost gear and swam messages "
-            "between boats. Bo and Sunny, the Obama family's dogs, were Portuguese Water Dogs.",
+            "between boats. It nearly vanished in the 1930s and was saved by the Portuguese shipping "
+            "magnate Vasco Bensaude.",
+            "Looks like a Poodle — both were water dogs — but it's a separate breed.",
+            (
+                "Bo and Sunny, the Obama family's dogs, were Portuguese Water Dogs.",
+                "Its coat barely sheds.",
+            ),
         ),
         "border_collie": Breed(
             "Border Collie", "United Kingdom",
-            "A sheepdog from the border between England and Scotland, often called the most "
-            "intelligent of all dog breeds.",
+            "A sheepdog from the border between England and Scotland; almost every modern Border "
+            "Collie descends from Old Hemp, born in 1893.",
+            "A cousin of the Australian Shepherd and other collies.",
+            (
+                "Often called the most intelligent of all dog breeds.",
+                "A Border Collie named Chaser learned the names of over 1,000 toys.",
+            ),
         ),
         "corgi": Breed(
             "Pembroke Welsh Corgi", "United Kingdom (Wales)",
-            "A Welsh cattle dog that herded by nipping at heels. Queen Elizabeth II owned more "
-            "than 30 of them.",
+            "A Welsh cattle dog that herded by nipping at heels, low enough to duck the kicks.",
+            "The Cardigan Welsh Corgi is an older cousin with a long tail.",
+            (
+                "Queen Elizabeth II owned more than 30 corgis.",
+                "Welsh legend says corgis carried fairy warriors; the saddle markings on their backs "
+                "come from fairy saddles.",
+            ),
         ),
         "poodle": Breed(
             "Poodle", "Germany · France",
-            "Originally a German water retriever — 'Pudel' comes from a word for splashing — and "
-            "today the national dog of France.",
+            "Originally a German water retriever — the name comes from 'pudeln', to splash. It became "
+            "so popular in France that it's now the French national dog.",
+            "Comes in standard, miniature and toy sizes; crossbreeds like the Labradoodle inherit its "
+            "low-shedding coat.",
+            (
+                "The famous poodle clip kept joints and chest warm in cold water while freeing the legs to swim.",
+                "Poodles regularly rank among the most intelligent breeds.",
+            ),
         ),
         "pomeranian": Breed(
             "Pomeranian", "Germany · Poland",
-            "A small spitz named after Pomerania on the Baltic coast; Queen Victoria made the tiny version fashionable.",
+            "A small spitz named after Pomerania on the Baltic coast. Queen Victoria fell for small "
+            "ones in Italy and made the toy size fashionable.",
+            "A miniature of larger spitz dogs like the German Spitz.",
+            (
+                "Two Pomeranians survived the sinking of the Titanic in 1912.",
+                "Early Pomeranians were much bigger — sheep-herding dogs of up to 14 kg.",
+            ),
         ),
         "pug": Breed(
             "Pug", "China",
-            "Kept in China for about 2,000 years; Dutch traders brought pugs to Europe in the 1500s.",
+            "Kept in China for about 2,000 years as a companion of emperors. Dutch traders brought "
+            "pugs to Europe in the 1500s, and they became a favourite of the royal House of Orange.",
+            "Related to other Chinese flat-faced dogs like the Pekingese and Shih Tzu.",
+            (
+                "A pug named Pompey is said to have saved William of Orange by barking at approaching assassins.",
+                "A group of pugs is called a 'grumble'.",
+            ),
         ),
         "shih_tzu": Breed(
             "Shih Tzu", "China · Tibet",
-            "A palace dog of the Chinese imperial court, with roots in Tibet. The name means 'little lion'.",
+            "A palace dog of the Chinese imperial court, with roots in Tibet. Its name means 'little lion'.",
+            "Related to the Lhasa Apso and Pekingese.",
+            (
+                "After the Chinese empire fell the breed nearly vanished; today's Shih Tzus descend "
+                "from about 14 dogs.",
+                "Its long coat grows continuously, like human hair.",
+            ),
         ),
         "french_bulldog": Breed(
             "French Bulldog", "France · England",
-            "Small bulldogs came to France with English lace workers in the 1800s, where the "
-            "bat-eared 'Frenchie' was born.",
+            "Small bulldogs came to France with English lace workers in the 1800s, and the bat-eared "
+            "'Frenchie' was born in Paris.",
+            "A small cousin of the English Bulldog.",
+            (
+                "Most Frenchies can't give birth naturally and are born by caesarean section.",
+                "A French Bulldog named Gamin de Pycombe was lost on the Titanic.",
+            ),
         ),
         "bulldog": Breed(
             "English Bulldog", "United Kingdom (England)",
-            "Once bred for bull-baiting, a blood sport banned in England in 1835; later bred into a "
-            "gentle companion.",
+            "Bred for bull-baiting, a blood sport banned in England in 1835; afterwards it was bred "
+            "into a gentle companion.",
+            "Ancestor of the French Bulldog, the Boston Terrier and many other bull breeds.",
+            (
+                "A symbol of British grit, often linked to Winston Churchill.",
+                "Its flat face makes it prone to breathing problems in the heat.",
+            ),
             prompt_name="English Bulldog",
         ),
         "beagle": Breed(
             "Beagle", "United Kingdom (England)",
-            "An English scent hound bred to hunt hares in packs; its nose has around 220 million scent receptors.",
+            "An English scent hound bred to hunt hares in packs, followed by hunters on foot.",
+            "A small cousin of the English Foxhound.",
+            (
+                "Its nose has around 220 million scent receptors; airports use Beagles to sniff out "
+                "forbidden food in luggage.",
+                "Snoopy from Peanuts is a Beagle.",
+            ),
         ),
         "dachshund": Breed(
             "Dachshund", "Germany",
-            "Its name means 'badger dog': short legs and a long body let it follow badgers into their burrows.",
+            "Its name means 'badger dog' in German: short legs and a long body let it follow badgers "
+            "into their burrows.",
+            "Comes in smooth, long-haired and wire-haired coats.",
+            (
+                "Waldi, a dachshund, was the first official Olympic mascot, at Munich 1972.",
+                "Its loud bark was bred on purpose, so hunters could hear it underground.",
+            ),
         ),
         "yorkshire_terrier": Breed(
             "Yorkshire Terrier", "United Kingdom (England)",
             "Bred in 19th-century Yorkshire to catch rats in textile mills and coal mines.",
+            "Related to other small terriers such as the Skye Terrier.",
+            (
+                "A Yorkie named Smoky served with US soldiers in the Second World War.",
+                "Its silky coat is closer to human hair than to typical dog fur.",
+            ),
         ),
         "rottweiler": Breed(
             "Rottweiler", "Germany",
-            "From the German town of Rottweil, where it drove cattle to market; butchers are said "
-            "to have tied their money pouches to its collar.",
+            "Thought to descend from the drovers' dogs of the Roman legions. In the German town of "
+            "Rottweil it drove cattle to market; butchers are said to have tied their money pouches "
+            "to its collar.",
+            "A cousin of the Swiss mountain dogs such as the Bernese.",
+            (
+                "One of the first breeds used by German police.",
+                "Its black-and-tan pattern is the same one the Dobermann has.",
+            ),
         ),
         "dobermann": Breed(
             "Dobermann", "Germany",
-            "Created in the 1890s by Louis Dobermann, a tax collector who wanted a protection dog on his rounds.",
+            "Created in the 1890s by Louis Dobermann, a tax collector from Apolda, Germany, who wanted "
+            "a protection dog on his rounds.",
+            "Its ancestry probably includes the Rottweiler, German Pinscher and Manchester Terrier.",
+            (
+                "A Dobermann named Kurt was the first war dog killed in the 1944 battle for Guam; a war "
+                "dog memorial there honours him.",
+                "It's among the fastest-learning working dogs.",
+            ),
             prompt_name="Doberman Pinscher",
         ),
         "boxer": Breed(
             "Boxer", "Germany",
-            "Developed in 19th-century Germany from older mastiff-type hunting dogs.",
+            "Developed in 19th-century Germany from the Bullenbeisser, an older mastiff-type hunting dog.",
+            "A cousin of the English Bulldog.",
+            (
+                "Its name is said to come from the way it spars with its front paws.",
+                "Boxers were among the first police dogs in Germany.",
+            ),
         ),
         "chow_chow": Breed(
             "Chow Chow", "China",
-            "An ancient Chinese spitz with a lion-like mane and a blue-black tongue.",
+            "An ancient spitz from northern China, used as a guard, hunter and cart dog.",
+            "Genetically one of the oldest breeds; it shares its blue-black tongue with the Shar Pei.",
+            (
+                "Its straight hind legs give it a stiff, stilted walk.",
+                "Its lion-like mane made it a favourite of Queen Victoria.",
+            ),
         ),
         "shar_pei": Breed(
             "Shar Pei", "China",
-            "A wrinkled guard dog from southern China; in the 1970s it was one of the rarest breeds in the world.",
+            "A wrinkled guard and hunting dog from southern China.",
+            "The only other breed with a blue-black tongue, like the Chow Chow.",
+            (
+                "In 1978 Guinness listed it as the rarest dog breed in the world.",
+                "Its name means 'sand skin', for its rough coat.",
+            ),
         ),
         "maltese": Breed(
             "Maltese", "Mediterranean",
             "One of the oldest toy breeds, a lap dog of the ancient Mediterranean linked to the island of Malta.",
+            "Related to the Bichon Frise and the Havanese.",
+            (
+                "Ancient Greeks and Romans kept them; they appear on Greek pottery.",
+                "It has no undercoat and sheds very little.",
+            ),
         ),
         "jack_russell": Breed(
             "Jack Russell Terrier", "United Kingdom (England)",
             "Named after the Reverend John Russell, who bred small white terriers for fox hunting in the 1800s.",
+            "Close to the Parson Russell Terrier.",
+            (
+                "A Jack Russell named Moose played Eddie on the TV show Frasier.",
+                "Bred to chase foxes out of burrows, it has seemingly endless energy.",
+            ),
         ),
         "dalmatian": Breed(
             "Dalmatian", "Croatia",
-            "Named after Dalmatia on the Adriatic coast and once a carriage dog running beside "
-            "coaches. Puppies are born pure white; the spots come later.",
+            "Named after Dalmatia on the Croatian coast. In England it became a carriage dog, running "
+            "beside coaches, and later ran with horse-drawn fire engines.",
+            "No close look-alikes — its spots are one of a kind.",
+            (
+                "Puppies are born pure white; the spots appear over the first weeks.",
+                "Dalmatians are the mascot of many fire stations, especially in the USA.",
+            ),
         ),
         "great_dane": Breed(
             "Great Dane", "Germany",
-            "Despite the name, a German breed, developed as a boar-hunting and estate dog.",
+            "Despite the name, a German breed, developed as a boar-hunting and estate guard dog.",
+            "A giant cousin of the mastiffs.",
+            (
+                "A Great Dane named Zeus was the tallest dog ever recorded, 111.8 cm at the shoulder.",
+                "Scooby-Doo is a Great Dane.",
+            ),
         ),
         "saint_bernard": Breed(
             "Saint Bernard", "Switzerland",
-            "The rescue dog of the Great St Bernard Pass hospice in the Alps. The most famous, "
-            "Barry, is credited with saving more than 40 people.",
+            "The rescue dog of the Great St Bernard Pass hospice in the Swiss Alps, where monks used "
+            "it to find travellers lost in the snow.",
+            "A cousin of the Swiss mountain dogs.",
+            (
+                "The most famous, Barry, is credited with saving more than 40 people; he's preserved "
+                "in the Natural History Museum in Bern.",
+                "The little brandy barrel on its collar is a myth made popular by a painting.",
+            ),
         ),
         "rhodesian_ridgeback": Breed(
             "Rhodesian Ridgeback", "Southern Africa",
-            "Bred in southern Africa to track lions and hold them at bay; it shares the backward "
-            "hair ridge with the Thai and Phu Quoc ridgebacks.",
+            "Bred in southern Africa by crossing European dogs with the ridged hunting dogs of the "
+            "Khoikhoi people; used to track lions and hold them at bay.",
+            "Shares its backward-growing hair ridge with the Thai and Phu Quoc Ridgebacks.",
+            (
+                "It was once called the 'African Lion Hound'.",
+                "Its ridge is formed by two whorls of hair called 'crowns'.",
+            ),
         ),
         "cane_corso": Breed(
             "Cane Corso", "Italy",
-            "An Italian mastiff that guarded farms and hunted boar; the breed was rescued from near "
-            "extinction in the 1970s.",
+            "An Italian mastiff descended from Roman war dogs, used to guard farms and hunt boar. It "
+            "was rescued from near extinction in the 1970s.",
+            "A cousin of the Neapolitan Mastiff.",
+            (
+                "Its name roughly means 'guardian dog' in Italian.",
+                "It was one of the few breeds kept by Italian farmers well into the 20th century.",
+            ),
         ),
         "spitz": Breed(
             "Japanese Spitz", "Japan",
-            "A fluffy white companion spitz developed in Japan in the 20th century.",
+            "A fluffy white companion developed in Japan in the 1920s–30s from white German spitz dogs.",
+            "Looks like a small Samoyed or a white Pomeranian.",
+            (
+                "Despite its bright white coat, it stays clean easily: dry dirt tends to fall out.",
+                "It's one of the most popular companion dogs in Japan.",
+            ),
         ),
     },
 }
