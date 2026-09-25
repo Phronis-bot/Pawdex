@@ -1,91 +1,63 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'api.dart';
 import 'config.dart';
+import 'device_id.dart';
+import 'sightings_screen.dart';
+import 'snap_screen.dart';
 
-void main() {
-  runApp(PawdexApp(client: http.Client()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final userId = await loadOrCreateUserId();
+  runApp(PawdexApp(
+    api: ApiClient(baseUrl: apiBaseUrl, userId: userId, client: http.Client()),
+  ));
 }
 
 class PawdexApp extends StatelessWidget {
-  const PawdexApp({super.key, required this.client});
+  const PawdexApp({super.key, required this.api});
 
-  final http.Client client;
+  final ApiClient api;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Pawdex',
       theme: ThemeData(colorSchemeSeed: Colors.orange, useMaterial3: true),
-      home: HelloScreen(client: client),
+      home: HomeShell(api: api),
     );
   }
 }
 
-class HelloScreen extends StatefulWidget {
-  const HelloScreen({super.key, required this.client});
+class HomeShell extends StatefulWidget {
+  const HomeShell({super.key, required this.api});
 
-  final http.Client client;
+  final ApiClient api;
 
   @override
-  State<HelloScreen> createState() => _HelloScreenState();
+  State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HelloScreenState extends State<HelloScreen> {
-  late Future<String> _health;
-
-  @override
-  void initState() {
-    super.initState();
-    _health = _fetchHealth();
-  }
-
-  Future<String> _fetchHealth() async {
-    final response = await widget.client
-        .get(Uri.parse('$apiBaseUrl/health'))
-        .timeout(const Duration(seconds: 5));
-    final pretty = const JsonEncoder.withIndent('  ')
-        .convert(jsonDecode(response.body));
-    return 'HTTP ${response.statusCode}\n$pretty';
-  }
-
-  void _retry() {
-    setState(() => _health = _fetchHealth());
-  }
+class _HomeShellState extends State<HomeShell> {
+  int _tab = 0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Hello Pawdex',
-                  style: Theme.of(context).textTheme.headlineMedium),
-              const SizedBox(height: 24),
-              FutureBuilder<String>(
-                future: _health,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const CircularProgressIndicator();
-                  }
-                  if (snapshot.hasError) {
-                    return Text('API unreachable at $apiBaseUrl\n${snapshot.error}',
-                        textAlign: TextAlign.center);
-                  }
-                  return Text(snapshot.data!,
-                      style: const TextStyle(fontFamily: 'monospace'));
-                },
-              ),
-              const SizedBox(height: 24),
-              OutlinedButton(onPressed: _retry, child: const Text('Retry')),
-            ],
-          ),
-        ),
+      appBar: AppBar(title: const Text('Pawdex')),
+      // No IndexedStack on purpose: "My sightings" refetches every time it is opened.
+      body: switch (_tab) {
+        0 => SnapScreen(api: widget.api),
+        _ => SightingsScreen(api: widget.api),
+      },
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _tab,
+        onDestinationSelected: (i) => setState(() => _tab = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.photo_camera), label: 'Snap'),
+          NavigationDestination(icon: Icon(Icons.collections), label: 'My sightings'),
+        ],
       ),
     );
   }

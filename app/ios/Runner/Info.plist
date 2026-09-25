@@ -66,5 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Pawdex uses the camera to photograph street cats and dogs.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pawdex lets you pick a photo of a cat or dog from your library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Pawdex records where you met an animal. The exact spot is never shown to other players.</string>
 </dict>
 </plist>
