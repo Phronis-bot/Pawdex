@@ -133,6 +133,40 @@ class SightingResult {
   final List<Candidate> candidates;
 }
 
+/// A map zone (H3 hexagon, ~350 m across). The server never sends exact animal locations.
+class Zone {
+  Zone({
+    required this.cell,
+    required this.center,
+    required this.boundary,
+    required this.cats,
+    required this.dogs,
+  });
+
+  factory Zone.fromJson(Map<String, dynamic> json) {
+    (double, double) point(Object? p) {
+      final list = p as List;
+      return ((list[0] as num).toDouble(), (list[1] as num).toDouble());
+    }
+
+    return Zone(
+      cell: json['cell'] as String,
+      center: point(json['center']),
+      boundary: (json['boundary'] as List).map(point).toList(),
+      cats: json['cats'] as int,
+      dogs: json['dogs'] as int,
+    );
+  }
+
+  final String cell;
+
+  /// (lat, lon) of the hexagon's centre and corners.
+  final (double, double) center;
+  final List<(double, double)> boundary;
+  final int cats;
+  final int dogs;
+}
+
 /// The server looked at the photo and found no cat or dog.
 class NoAnimalException implements Exception {
   NoAnimalException(this.message);
@@ -218,6 +252,27 @@ class ApiClient {
     );
     _check(response);
     return Animal.fromJson(_json(response) as Map<String, dynamic>);
+  }
+
+  Future<List<Zone>> zones({
+    required double latitude,
+    required double longitude,
+    required double radiusMeters,
+  }) async {
+    final uri = Uri.parse('$baseUrl/map/zones').replace(queryParameters: {
+      'lat': latitude.toString(),
+      'lon': longitude.toString(),
+      'radius_m': radiusMeters.round().toString(),
+    });
+    final response = await client.get(uri, headers: _headers);
+    _check(response);
+    return (_json(response) as List).map((e) => Zone.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<Animal>> zoneAnimals(String cell) async {
+    final response = await client.get(Uri.parse('$baseUrl/map/zones/$cell/animals'), headers: _headers);
+    _check(response);
+    return (_json(response) as List).map((e) => Animal.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<Uint8List> sightingPhoto(String sightingId) =>

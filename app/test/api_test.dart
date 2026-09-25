@@ -99,6 +99,31 @@ void main() {
     expect(animal.name, 'Mèo Béo');
   });
 
+  test('zones sends the map centre and radius and parses hexagons', () async {
+    final api = apiWith((request) async {
+      expect(request.url.path, '/map/zones');
+      expect(request.url.queryParameters, {'lat': '10.77', 'lon': '106.7', 'radius_m': '1500'});
+      return jsonResponse([zoneJson(cell: '89xyz', cats: 2, dogs: 1)]);
+    });
+
+    final zones = await api.zones(latitude: 10.77, longitude: 106.7, radiusMeters: 1499.6);
+
+    expect(zones.single.cell, '89xyz');
+    expect(zones.single.cats, 2);
+    expect(zones.single.dogs, 1);
+    expect(zones.single.boundary, hasLength(6));
+    expect(zones.single.center, (10.77, 106.7));
+  });
+
+  test('zoneAnimals lists the animals of a cell', () async {
+    final api = apiWith((request) async {
+      expect(request.url.path, '/map/zones/89xyz/animals');
+      return jsonResponse([animalJson(name: 'Mo', count: 14)]);
+    });
+
+    expect((await api.zoneAnimals('89xyz')).single.name, 'Mo');
+  });
+
   test('mySightings parses pending and linked sightings', () async {
     final api = apiWith((request) async {
       expect(request.url.path, '/sightings/mine');

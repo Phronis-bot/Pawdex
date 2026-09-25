@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'api.dart';
 import 'config.dart';
 import 'device_id.dart';
+import 'map_screen.dart';
 import 'sightings_screen.dart';
 import 'snap_screen.dart';
 
@@ -46,9 +47,10 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Pawdex')),
-      // No IndexedStack on purpose: "My sightings" refetches every time it is opened.
+      // No IndexedStack on purpose: tabs refetch their data every time they are opened.
       body: switch (_tab) {
         0 => SnapScreen(api: widget.api),
+        1 => MapScreen(api: widget.api),
         _ => SightingsScreen(api: widget.api),
       },
       bottomNavigationBar: NavigationBar(
@@ -56,6 +58,7 @@ class _HomeShellState extends State<HomeShell> {
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.photo_camera), label: 'Snap'),
+          NavigationDestination(icon: Icon(Icons.map), label: 'Map'),
           NavigationDestination(icon: Icon(Icons.collections), label: 'My sightings'),
         ],
       ),

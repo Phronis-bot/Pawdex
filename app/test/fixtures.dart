@@ -32,6 +32,16 @@ Map<String, dynamic> sightingJson({
       'animal': animal,
     };
 
+Map<String, dynamic> zoneJson({String cell = '89xyz', int cats = 1, int dogs = 0}) => {
+      'cell': cell,
+      'center': [10.77, 106.7],
+      'boundary': [
+        for (var i = 0; i < 6; i++) [10.77 + 0.001 * i, 106.7]
+      ],
+      'cats': cats,
+      'dogs': dogs,
+    };
+
 Map<String, dynamic> sightingResultJson({
   required String outcome,
   bool pending = false,
