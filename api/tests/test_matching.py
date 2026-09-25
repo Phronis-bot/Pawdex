@@ -33,6 +33,7 @@ def test_first_photo_of_an_animal_creates_it_and_the_discoverer_may_name_it(fake
     assert body["animal"]["can_name"] is True
     assert body["sighting"]["pending"] is False
     assert body["sighting"]["animal"]["id"] == body["animal"]["id"]
+    assert body["sighting"]["animal"]["can_name"] is True
 
 
 def test_name_is_set_once_by_the_discoverer_only(fake_embedder):

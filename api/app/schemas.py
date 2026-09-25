@@ -13,6 +13,7 @@ from app.models import Animal, Sighting, Species
 class AnimalRef(BaseModel):
     id: uuid.UUID
     name: str | None
+    can_name: bool
 
 
 class AnimalOut(BaseModel):
@@ -54,11 +55,15 @@ def animal_out(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalOu
         species=animal.species,
         name=animal.name,
         sightings_count=count,
-        can_name=animal.name is None and animal.discoverer_id == user_id,
+        can_name=_can_name(animal, user_id),
     )
 
 
-def sighting_out(sighting: Sighting) -> SightingOut:
+def _can_name(animal: Animal, user_id: uuid.UUID) -> bool:
+    return animal.name is None and animal.discoverer_id == user_id
+
+
+def sighting_out(sighting: Sighting, user_id: uuid.UUID) -> SightingOut:
     animal = sighting.animal
     return SightingOut(
         id=sighting.id,
@@ -66,7 +71,7 @@ def sighting_out(sighting: Sighting) -> SightingOut:
         confidence=sighting.confidence,
         created_at=sighting.created_at,
         pending=sighting.pending,
-        animal=AnimalRef(id=animal.id, name=animal.name) if animal else None,
+        animal=AnimalRef(id=animal.id, name=animal.name, can_name=_can_name(animal, user_id)) if animal else None,
     )
 
 
@@ -86,7 +91,7 @@ def sighting_result(
 ) -> SightingResult:
     session.refresh(sighting)
     return SightingResult(
-        sighting=sighting_out(sighting),
+        sighting=sighting_out(sighting, user_id),
         outcome=outcome,
         animal=animal_out(session, sighting.animal, user_id) if sighting.animal else None,
         candidates=candidates_out(session, candidates, user_id) if outcome is Outcome.uncertain else [],

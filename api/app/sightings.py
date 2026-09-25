@@ -87,7 +87,7 @@ def my_sightings(
         .options(selectinload(Sighting.animal))
         .order_by(Sighting.created_at.desc())
     ).all()
-    return [sighting_out(s) for s in sightings]
+    return [sighting_out(s, user_id) for s in sightings]
 
 
 def _own_sighting(session: Session, sighting_id: uuid.UUID, user_id: uuid.UUID) -> Sighting:
