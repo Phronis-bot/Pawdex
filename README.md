@@ -16,9 +16,11 @@ docker-compose.yml  api + db одной командой
 | Git | репозиторий | https://git-scm.com |
 | Docker Desktop (с WSL2) | API и база | https://www.docker.com/products/docker-desktop |
 | Flutter SDK | приложение | https://docs.flutter.dev/get-started/install/windows |
-| Android Studio | эмулятор Android (не обязательно для фазы 0) | https://developer.android.com/studio |
+| Android Studio | Android SDK (и эмулятор, если нет телефона) | https://developer.android.com/studio |
 
 Python ставить локально не нужно: API работает в контейнере.
+
+В Windows нужно включить **режим разработчика**, иначе Flutter не соберёт приложение с плагинами (ему нужны символические ссылки): **Параметры → Система → Для разработчиков → Режим разработчика**.
 
 Проверка:
 
@@ -45,6 +47,8 @@ docker compose up --build
 
 Swagger с документацией API: http://localhost:8000/docs
 
+Вид животного (кошка / собака / нет животного) определяет модель CLIP (`openai/clip-vit-base-patch32`). При первом определении она скачает веса (~600 МБ) в Docker-том `apidata`, поэтому первая загрузка фото займёт на минуту-две дольше обычного. Фото хранятся в том же томе, в `/data/photos`.
+
 ## 3. Тесты API
 
 При запущенном `docker compose up`, в соседнем терминале:
@@ -53,23 +57,22 @@ Swagger с документацией API: http://localhost:8000/docs
 docker compose exec api pytest
 ```
 
-## 4. Запустить приложение
+Тесты используют отдельную базу `pawdex_test`, которая пересоздаётся при каждом запуске, так что ваши данные в `pawdex` они не трогают. Тесты классификатора прогоняют настоящую модель на картинках из `api/tests/fixtures`.
 
-Один раз сгенерируйте папки платформ (android/ios/web/windows). Существующие `lib/`, `test/` и `pubspec.yaml` при этом не перезаписываются:
+## 4. Запустить приложение
 
 ```bash
 cd app
-flutter create . --project-name pawdex --org app.pawdex
 flutter pub get
 ```
 
-Для фазы 0 проще всего запускать в браузере или как Windows-приложение:
+В браузере камеры нет, но можно выбрать фото с диска, а координаты браузер спросит сам:
 
 ```bash
 flutter run -d chrome
 ```
 
-На экране будет «Hello Pawdex» и JSON-ответ от `/health`.
+Внизу две вкладки: **Snap** (сфотографировать или выбрать фото) и **My sightings** (мои встречи).
 
 - **Эмулятор Android**: адрес `10.0.2.2:8000` подставляется автоматически.
 - **Android-телефон по USB** (включена отладка по USB, `flutter devices` его видит). Пробросьте порт, чтобы `localhost:8000` на телефоне вёл на компьютер. Это нужно делать заново после каждого переподключения кабеля:
