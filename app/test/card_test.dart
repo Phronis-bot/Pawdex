@@ -86,5 +86,14 @@ void main() {
     expect(find.text('LEGENDARY'), findsOneWidget);
     expect(find.text('Cat · Calico'), findsOneWidget);
     expect(find.text('Seen 2 times · discovered by Sleepy Mango'), findsOneWidget);
+
+    final withBreed = AnimalCard.fromJson(cardJson(breed: {
+      'name': 'Siamese',
+      'origin': 'Thailand',
+      'history': 'One of the oldest known breeds.',
+    }));
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: ShareCard(card: withBreed, photo: photo))));
+    expect(find.text('Cat · Siamese · Calico'), findsOneWidget);
+    expect(find.text('from Thailand'), findsOneWidget);
   });
 }

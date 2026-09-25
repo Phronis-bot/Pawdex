@@ -11,6 +11,7 @@ import 'species_label.dart';
 
 /// Preview of the social-media card with a Share button. The card deliberately shows
 /// no place names or map: a shared picture must not help anyone find the animal.
+/// (The breed's country of origin is history, not the animal's location.)
 class ShareCardScreen extends StatefulWidget {
   const ShareCardScreen({super.key, required this.api, required this.card});
 
@@ -127,8 +128,16 @@ class ShareCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(animalTitle(animal.name, animal.species),
               style: white.copyWith(fontSize: 30, fontWeight: FontWeight.w800)),
-          Text([speciesLabel(animal.species), if (card.coat != null) card.coat!].join(' · '),
-              style: white.copyWith(fontSize: 16)),
+          Text(
+            [
+              speciesLabel(animal.species),
+              if (card.breed != null) card.breed!.name,
+              if (card.coat != null) card.coat!,
+            ].join(' · '),
+            style: white.copyWith(fontSize: 16),
+          ),
+          if (card.breed case final breed?)
+            Text('from ${breed.origin}', style: white.copyWith(fontSize: 13)),
           const SizedBox(height: 10),
           Text('Seen $seen ${seen == 1 ? 'time' : 'times'} · discovered by ${card.discoveredBy}',
               style: white.copyWith(fontSize: 13)),
