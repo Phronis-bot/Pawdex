@@ -19,5 +19,17 @@ class Settings(BaseSettings):
     # Minimum probability of the winning cat/dog group to accept the photo as an animal.
     min_animal_confidence: float = 0.5
 
+    # Re-identification of individual animals. See eval/reid_eval.py for how the
+    # model and thresholds were chosen.
+    embedding_model: str = "dinov2"  # "clip" or "dinov2"
+    # A new photo is only compared with animals of the same species seen within this radius.
+    match_radius_m: float = 300
+    # Cosine similarity at or above which we say "It's Mo!" without asking.
+    # On the eval set no two different animals scored above 0.67.
+    match_confident: float = 0.70
+    # Between this and match_confident we ask the player; below it the animal is new.
+    match_uncertain: float = 0.45
+    match_max_candidates: int = 3
+
 
 settings = Settings()

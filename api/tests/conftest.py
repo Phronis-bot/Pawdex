@@ -1,7 +1,10 @@
 """Tests run against a separate `<dev db>_test` database with migrations applied."""
+import math
 import os
+import random
 import tempfile
 
+import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 
@@ -28,3 +31,41 @@ def _prepare_database() -> None:
 
 def pytest_configure(config):
     _prepare_database()
+
+
+DIM = 64
+
+
+class FakeEmbedder:
+    """Returns queued vectors so tests control similarity; random (unrelated) ones otherwise."""
+
+    name = "fake"
+
+    def __init__(self):
+        self.queue: list[list[float]] = []
+
+    def embed(self, image):
+        if self.queue:
+            return self.queue.pop(0)
+        v = [random.gauss(0, 1) for _ in range(DIM)]
+        norm = math.sqrt(sum(x * x for x in v))
+        return [x / norm for x in v]
+
+
+def vector_with_similarity(similarity: float) -> list[float]:
+    """A unit vector whose cosine similarity to BASE_VECTOR is exactly `similarity`."""
+    return [similarity, math.sqrt(1 - similarity**2)] + [0.0] * (DIM - 2)
+
+
+BASE_VECTOR = vector_with_similarity(1.0)
+
+
+@pytest.fixture
+def fake_embedder():
+    from app.embedder import get_embedder
+    from app.main import app
+
+    fake = FakeEmbedder()
+    app.dependency_overrides[get_embedder] = lambda: fake
+    yield fake
+    app.dependency_overrides.pop(get_embedder, None)
