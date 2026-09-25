@@ -31,5 +31,10 @@ class Settings(BaseSettings):
     match_uncertain: float = 0.45
     match_max_candidates: int = 3
 
+    # Map. Animals are shown only as H3 hexagon cells, never as points (rule 3: pets
+    # get stolen). Resolution 9 hexagons are ~350 m across.
+    map_cell_resolution: int = 9
+    map_max_radius_m: float = 5000
+
 
 settings = Settings()

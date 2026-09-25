@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.animals import router as animals_router
 from app.db import get_session
+from app.map import router as map_router
 from app.sightings import router as sightings_router
 
-app = FastAPI(title="Pawdex API", version="0.2.0")
+app = FastAPI(title="Pawdex API", version="0.3.0")
 app.include_router(sightings_router)
 app.include_router(animals_router)
+app.include_router(map_router)
 
 app.add_middleware(
     CORSMiddleware,
