@@ -206,8 +206,9 @@ BREEDS: dict[Species, dict[str, Breed]] = {
         ),
         "german_shepherd": Breed(
             "German Shepherd", "Germany",
-            "Created in 1899 by cavalry officer Max von Stephanitz as the ideal herding dog; it "
-            "soon became the world's classic police and service dog.",
+            "Bred from Germany's old working sheepdogs. In 1899 cavalry officer Max von Stephanitz "
+            "registered the first one, Horand von Grafrath, and set out to create the ideal herding "
+            "dog; it soon became the world's classic police and service dog.",
         ),
         "siberian_husky": Breed(
             "Siberian Husky", "Russia (Siberia)",
