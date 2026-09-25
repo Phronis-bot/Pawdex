@@ -87,7 +87,7 @@ class _CardBody extends StatelessWidget {
         Text(
           [
             speciesLabel(animal.species),
-            if (card.breed != null) card.breed!.name,
+            card.breed?.name ?? 'Mixed breed',
             if (card.coat != null) card.coat!,
           ].join(' · '),
           style: text.titleMedium,
@@ -95,16 +95,24 @@ class _CardBody extends StatelessWidget {
         const SizedBox(height: 12),
         Text(card.discoveredByMe ? 'Discovered by you' : 'Discovered by ${card.discoveredBy}'),
         Text('Seen $seen ${seen == 1 ? 'time' : 'times'} · first on ${_date(card.chronicle.first.createdAt)}'),
-        if (card.breed case final breed?) ...[
-          const SizedBox(height: 16),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.public),
-              title: Text('${breed.name} · from ${breed.origin}'),
-              subtitle: Text(breed.history),
-            ),
-          ),
-        ],
+        const SizedBox(height: 16),
+        Card(
+          child: switch (card.breed) {
+            final breed? => ListTile(
+                leading: const Icon(Icons.public),
+                title: Text('${breed.name} · from ${breed.origin}'),
+                subtitle: Text(breed.history),
+              ),
+            null => ListTile(
+                leading: const Icon(Icons.pets),
+                title: const Text('Mixed breed'),
+                subtitle: Text(
+                  'No pedigree, like most street ${speciesWord(animal.species)}s in the world — '
+                  'which makes every one of them one of a kind.',
+                ),
+              ),
+          },
+        ),
         if (card.coatFacts.isNotEmpty) ...[
           const SizedBox(height: 16),
           Card(

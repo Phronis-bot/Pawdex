@@ -33,15 +33,17 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: AnimalCardScreen(api: api, animalId: 'mo')));
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('★★★ Legendary'), 200);
-    expect(find.text('Cat · Calico'), findsOneWidget);
+    // The page itself, not the chronicle grid nested inside it.
+    final page = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(find.text('★★★ Legendary'), 200, scrollable: page);
+    expect(find.text('Cat · Mixed breed · Calico'), findsOneWidget);
     expect(find.text('Discovered by Sleepy Mango'), findsOneWidget);
     expect(find.textContaining('Seen 2 times'), findsOneWidget);
 
-    await tester.scrollUntilVisible(find.text('In Japan calicos are considered lucky.'), 200);
+    await tester.scrollUntilVisible(find.text('In Japan calicos are considered lucky.'), 200, scrollable: page);
     expect(find.text('Did you know?'), findsOneWidget);
     expect(find.text('Calico cats are almost always female.'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('by you'), 200);
+    await tester.scrollUntilVisible(find.text('by you'), 200, scrollable: page);
     expect(find.text('by Sleepy Mango'), findsOneWidget);
   });
 
@@ -69,6 +71,7 @@ void main() {
 
     await open(cardJson());
     expect(find.textContaining('from Thailand'), findsNothing);
+    expect(find.text('Mixed breed'), findsOneWidget);
   });
 
   testWidgets('share card shows name, rarity and discoverer but no place', (tester) async {
@@ -84,7 +87,7 @@ void main() {
 
     expect(find.text('Mo'), findsOneWidget);
     expect(find.text('LEGENDARY'), findsOneWidget);
-    expect(find.text('Cat · Calico'), findsOneWidget);
+    expect(find.text('Cat · Mixed breed · Calico'), findsOneWidget);
     expect(find.text('Seen 2 times · discovered by Sleepy Mango'), findsOneWidget);
 
     final withBreed = AnimalCard.fromJson(cardJson(breed: {
