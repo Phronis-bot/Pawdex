@@ -133,7 +133,8 @@ def test_unknown_or_wrong_resolution_zone_is_404():
 
 def test_radius_is_capped():
     player = new_user()
-    lat, lon = fresh_spot()
+    # Far north of fresh_spot()'s area, so no other test's animals are within 50 km.
+    lat, lon = 13.0, 107.0
     post_photo(player, CAT, lat + 0.09, lon)  # ~10 km away, beyond the cap
 
     assert zones(player, lat, lon, radius_m=50_000).json() == []

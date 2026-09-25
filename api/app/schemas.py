@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.breeds import BREEDS
 from app.coats import COATS, Rarity
 from app.matching import Candidate, Outcome
 from app.models import Animal, Sighting, Species, User
@@ -35,11 +36,19 @@ class ChronicleEntry(BaseModel):
     by_me: bool
 
 
+class BreedOut(BaseModel):
+    name: str
+    origin: str
+    history: str
+
+
 class AnimalCard(AnimalOut):
     discovered_by: str  # discoverer's nickname
     discovered_by_me: bool
     coat: str | None
     coat_fact: str | None
+    # Only on the card, never in map/zone/candidate responses.
+    breed: BreedOut | None
     # Oldest first; photos via GET /sightings/{sighting_id}/photo.
     chronicle: list[ChronicleEntry]
 
@@ -81,6 +90,7 @@ def animal_out(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalOu
 
 def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalCard:
     coat = COATS[animal.species].get(animal.coat) if animal.coat else None
+    breed = BREEDS[animal.species].get(animal.breed) if animal.breed else None
     entries = session.execute(
         select(Sighting.id, Sighting.created_at, Sighting.user_id, User.nickname)
         .join(User, User.id == Sighting.user_id)
@@ -93,6 +103,7 @@ def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalC
         discovered_by_me=animal.discoverer_id == user_id,
         coat=coat.label if coat else None,
         coat_fact=coat.fact if coat else None,
+        breed=BreedOut(name=breed.label, origin=breed.origin, history=breed.history) if breed else None,
         chronicle=[
             ChronicleEntry(sighting_id=sid, created_at=at, by=nickname, by_me=uid == user_id)
             for sid, at, uid, nickname in entries

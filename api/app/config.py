@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     match_uncertain: float = 0.45
     match_max_candidates: int = 3
 
+    # Breeds use a larger CLIP (~1.7 GB): the base one confused street cats with breeds.
+    breed_clip_model: str = "openai/clip-vit-large-patch14"
+    # A breed is shown only if CLIP gives it at least this probability and it beats
+    # "mixed breed". Tuned per species with eval/breed_eval.py: a false breed on a street
+    # animal is worse than a missed one.
+    breed_min_confidence: dict[str, float] = {"cat": 0.7, "dog": 0.6}
+
     # Map. Animals are shown only as H3 hexagon cells, never as points (rule 3: pets
     # get stolen). Resolution 9 hexagons are ~350 m across.
     map_cell_resolution: int = 9

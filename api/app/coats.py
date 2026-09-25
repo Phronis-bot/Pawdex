@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import torch
 from PIL import Image
 
+from app.breeds import detect_breed
 from app.classifier import get_classifier
 from app.models import Animal, Species
 
@@ -80,8 +81,8 @@ COATS: dict[Species, dict[str, Coat]] = {
     Species.dog: {
         "tan": Coat(
             "Tan", "a photo of a yellow, tan or golden dog", Rarity.common,
-            "Yellow-tan dogs with curled tails are the classic village dog from India to Vietnam: "
-            "a look free-roaming dogs keep when nobody breeds them for looks.",
+            "Yellow-tan is the most common colour of free-roaming dogs worldwide: it's the coat "
+            "dogs tend to end up with when nobody breeds them for looks.",
         ),
         "brown": Coat(
             "Brown", "a photo of a brown dog", Rarity.common,
@@ -129,11 +130,12 @@ def detect_coat(image: Image.Image, species: Species) -> str:
 
 
 def new_animal(image: Image.Image, species: Species, discoverer_id) -> Animal:
-    """A freshly discovered animal; its coat and rarity come from the discovering photo."""
+    """A freshly discovered animal; coat, rarity and breed come from the discovering photo."""
     coat = detect_coat(image, species)
     return Animal(
         species=species,
         discoverer_id=discoverer_id,
         coat=coat,
         rarity=COATS[species][coat].rarity.value,
+        breed=detect_breed(image, species),
     )
