@@ -16,6 +16,7 @@ from app.embedder import Embedder, get_embedder
 from app.matching import Outcome, decide, find_candidates
 from app.models import Sighting
 from app.photos import InvalidImage, encode_for_storage, load_image
+from app.segment import prepare_photo, reid_model_name
 from app.schemas import CandidateOut, SightingOut, SightingResult, candidates_out, sighting_out, sighting_result
 from app.storage import PhotoStorage, get_storage
 
@@ -54,14 +55,15 @@ def create_sighting(
             },
         )
 
+    subject, stored = prepare_photo(image, result.species)
     sighting = Sighting(
         user_id=user_id,
         species=result.species,
         confidence=result.confidence,
-        photo_key=storage.save(encode_for_storage(image, settings.photo_max_side), "jpg"),
+        photo_key=storage.save(encode_for_storage(stored, settings.photo_max_side), "jpg"),
         location=WKTElement(f"POINT({longitude} {latitude})", srid=4326),
-        embedding=embedder.embed(image),
-        embedding_model=embedder.name,
+        embedding=embedder.embed(subject),
+        embedding_model=reid_model_name(embedder),
     )
     session.add(sighting)
     session.flush()

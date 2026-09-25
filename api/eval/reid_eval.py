@@ -14,7 +14,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from app.embedder import EMBEDDERS
+from app.models import Species
 from app.photos import load_image
+from app.segment import crop_to_animal, find_animal
 
 ROOT = Path(__file__).parent / "reid"
 
@@ -27,12 +29,17 @@ class Report:
     total: int = 0
 
 
-def load_photos():
+def load_photos(crop: bool = False):
+    """(species, animal, image); with crop=True, the image is cut to the animal like the app does."""
     photos = []
     for folder in sorted(p for p in ROOT.iterdir() if p.is_dir()):
         species, animal = folder.name.split("_", 1)
         for f in sorted(folder.glob("*.jpg")):
-            photos.append((species, animal, load_image(f.read_bytes())))
+            image = load_image(f.read_bytes())
+            if crop:
+                region = find_animal(image, Species(species))
+                image = crop_to_animal(image, region) if region else image
+            photos.append((species, animal, image))
     return photos
 
 
@@ -61,15 +68,19 @@ def pct(values, q):
 
 
 def main():
-    photos = load_photos()
-    print(f"{len(photos)} photos of {len({(s, a) for s, a, _ in photos})} animals")
+    full, cropped = load_photos(), load_photos(crop=True)
+    print(f"{len(full)} photos of {len({(s, a) for s, a, _ in full})} animals")
     for embedder_cls in EMBEDDERS.values():
         embedder = embedder_cls()
-        r = evaluate(embedder, photos)
-        print(f"\n== {embedder.name}")
-        print(f"same animal  n={len(r.same):3d}  min={min(r.same):.3f}  p10={pct(r.same, .1):.3f}  median={statistics.median(r.same):.3f}")
-        print(f"diff animal  n={len(r.different):3d}  median={statistics.median(r.different):.3f}  p90={pct(r.different, .9):.3f}  max={max(r.different):.3f}")
-        print(f"top-1 accuracy: {r.top1_correct}/{r.total}")
+        for mode, photos in (("whole photo", full), ("cropped to animal", cropped)):
+            _report(f"{embedder.name}, {mode}", evaluate(embedder, photos))
+
+
+def _report(title: str, r: Report) -> None:
+    print(f"\n== {title}")
+    print(f"same animal  n={len(r.same):3d}  min={min(r.same):.3f}  p10={pct(r.same, .1):.3f}  median={statistics.median(r.same):.3f}")
+    print(f"diff animal  n={len(r.different):3d}  median={statistics.median(r.different):.3f}  p90={pct(r.different, .9):.3f}  max={max(r.different):.3f}")
+    print(f"top-1 accuracy: {r.top1_correct}/{r.total}")
 
 
 if __name__ == "__main__":
