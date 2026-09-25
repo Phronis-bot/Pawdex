@@ -1,0 +1,51 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+http.Response jsonResponse(Object body, [int status = 200]) => http.Response.bytes(
+      utf8.encode(jsonEncode(body)),
+      status,
+      headers: {'content-type': 'application/json'},
+    );
+
+Map<String, dynamic> animalJson({
+  String id = 'a1',
+  String species = 'cat',
+  String? name,
+  int count = 1,
+  bool canName = false,
+}) =>
+    {'id': id, 'species': species, 'name': name, 'sightings_count': count, 'can_name': canName};
+
+Map<String, dynamic> sightingJson({
+  String id = 's1',
+  String species = 'cat',
+  bool pending = false,
+  Map<String, dynamic>? animal,
+}) =>
+    {
+      'id': id,
+      'species': species,
+      'confidence': 0.9,
+      'created_at': '2026-09-25T10:00:00Z',
+      'pending': pending,
+      'animal': animal,
+    };
+
+Map<String, dynamic> sightingResultJson({
+  required String outcome,
+  bool pending = false,
+  Map<String, dynamic>? animal,
+  List<Map<String, dynamic>> candidates = const [],
+}) =>
+    {
+      'sighting': sightingJson(
+        pending: pending,
+        animal: animal == null
+            ? null
+            : {'id': animal['id'], 'name': animal['name'], 'can_name': animal['can_name']},
+      ),
+      'outcome': outcome,
+      'animal': animal,
+      'candidates': candidates,
+    };

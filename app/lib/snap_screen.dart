@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'api.dart';
+import 'flows.dart';
 import 'location.dart';
 import 'species_label.dart';
 
@@ -29,13 +30,27 @@ class _SnapScreenState extends State<SnapScreen> {
     });
     try {
       final position = await currentPosition();
-      final sighting = await widget.api.createSighting(
+      final result = await widget.api.createSighting(
         photo: await file.readAsBytes(),
         latitude: position.latitude,
         longitude: position.longitude,
       );
-      _show(Icons.pets, '${speciesLabel(sighting.species)}!',
-          'Saved to your sightings (${(sighting.confidence * 100).round()}% sure).');
+      if (!mounted) return;
+      final done = await completeSighting(context, widget.api, result);
+      if (done == null) {
+        _show(Icons.help_outline, 'Saved for later',
+            'Tell us who it is from My sightings when you are ready.');
+        return;
+      }
+      final animal = done.animal;
+      final title = animalTitle(animal.name, animal.species);
+      if (done.outcome == Outcome.newAnimal) {
+        _show(Icons.auto_awesome, animal.name == null ? 'New ${speciesWord(animal.species)}!' : 'Meet $title!',
+            "You discovered them. They're now in your sightings.");
+      } else {
+        _show(Icons.pets, "It's $title!",
+            'Seen ${animal.sightingsCount} ${animal.sightingsCount == 1 ? 'time' : 'times'}.');
+      }
     } on NoAnimalException catch (e) {
       _show(Icons.search_off, 'No cat or dog', e.message);
     } on LocationUnavailable catch (e) {

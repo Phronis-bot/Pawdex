@@ -1,8 +1,8 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'flows.dart';
+import 'photo_view.dart';
 import 'species_label.dart';
 
 class SightingsScreen extends StatefulWidget {
@@ -21,6 +21,29 @@ class _SightingsScreenState extends State<SightingsScreen> {
     final next = widget.api.mySightings();
     setState(() => _sightings = next);
     await next;
+  }
+
+  Future<void> _open(Sighting s) async {
+    try {
+      if (s.pending) {
+        final candidates = await widget.api.candidates(s.id);
+        if (!mounted) return;
+        await completeSighting(
+          context,
+          widget.api,
+          SightingResult(sighting: s, outcome: Outcome.uncertain, animal: null, candidates: candidates),
+        );
+      } else if (s.animal case final animal? when animal.canName) {
+        await askName(context, widget.api, animalId: animal.id, species: s.species);
+      } else {
+        return;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+    await _reload();
   }
 
   @override
@@ -50,47 +73,36 @@ class _SightingsScreenState extends State<SightingsScreen> {
           onRefresh: _reload,
           child: ListView.builder(
             itemCount: sightings.length,
-            itemBuilder: (context, i) => _SightingTile(api: widget.api, sighting: sightings[i]),
+            itemBuilder: (context, i) {
+              final s = sightings[i];
+              return ListTile(
+                key: ValueKey(s.id),
+                leading: ApiPhoto(load: () => widget.api.sightingPhoto(s.id), size: 56),
+                title: Text(_title(s)),
+                subtitle: Text(_subtitle(s)),
+                trailing: s.pending || (s.animal?.canName ?? false)
+                    ? const Icon(Icons.chevron_right)
+                    : null,
+                onTap: () => _open(s),
+              );
+            },
           ),
         );
       },
     );
   }
-}
 
-class _SightingTile extends StatefulWidget {
-  const _SightingTile({required this.api, required this.sighting});
+  static String _title(Sighting s) {
+    if (s.pending) return 'Who is this? Tap to tell us';
+    final animal = s.animal;
+    // Sightings from before animals existed have no animal.
+    if (animal == null) return speciesLabel(s.species);
+    return animalTitle(animal.name, s.species);
+  }
 
-  final ApiClient api;
-  final Sighting sighting;
-
-  @override
-  State<_SightingTile> createState() => _SightingTileState();
-}
-
-class _SightingTileState extends State<_SightingTile> {
-  // Photos need the X-User-Id header, so they are fetched as bytes rather than Image.network.
-  late final Future<Uint8List> _photo = widget.api.sightingPhoto(widget.sighting.id);
-
-  @override
-  Widget build(BuildContext context) {
-    final s = widget.sighting;
-    return ListTile(
-      leading: SizedBox.square(
-        dimension: 56,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: FutureBuilder<Uint8List>(
-            future: _photo,
-            builder: (context, snapshot) => snapshot.hasData
-                ? Image.memory(snapshot.data!, fit: BoxFit.cover)
-                : const ColoredBox(color: Colors.black12),
-          ),
-        ),
-      ),
-      title: Text(speciesLabel(s.species)),
-      subtitle: Text(_formatDate(s.createdAt)),
-    );
+  static String _subtitle(Sighting s) {
+    final date = _formatDate(s.createdAt);
+    return (s.animal?.canName ?? false) ? '$date · tap to name' : date;
   }
 
   static String _formatDate(DateTime d) {
