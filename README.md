@@ -71,11 +71,15 @@ flutter run -d chrome
 
 На экране будет «Hello Pawdex» и JSON-ответ от `/health`.
 
-- **Эмулятор Android**: адрес `10.0.2.2:8000` подставляется автоматически. Android по умолчанию блокирует обычный `http://`, поэтому в `app/android/app/src/debug/AndroidManifest.xml` внутрь `<manifest>` нужно добавить `<application android:usesCleartextTraffic="true"/>`.
-- **Настоящий телефон** (в той же Wi-Fi-сети): передайте IP компьютера:
+- **Эмулятор Android**: адрес `10.0.2.2:8000` подставляется автоматически.
+- **Android-телефон по USB** (включена отладка по USB, `flutter devices` его видит). Пробросьте порт, чтобы `localhost:8000` на телефоне вёл на компьютер. Это нужно делать заново после каждого переподключения кабеля:
   ```bash
-  flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8000
+  %LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe reverse tcp:8000 tcp:8000
   ```
+  ```bash
+  flutter run --dart-define=API_BASE_URL=http://localhost:8000
+  ```
+- **iPhone**: сборка возможна только на Mac.
 
 Тесты приложения:
 
