@@ -1,9 +1,15 @@
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
 pydantic-settings==2.6.1
+python-multipart==0.0.19
 SQLAlchemy==2.0.36
 psycopg[binary]==3.2.3
+GeoAlchemy2==0.16.0
 alembic==1.14.0
+pillow==11.0.0
+
+# ML (torch itself is installed from the CPU-only index, see Dockerfile)
+transformers==4.46.3
 
 # tests
 pytest==8.3.4

@@ -23,9 +23,12 @@ services:
       - "8000:8000"
     volumes:
       - ./api:/srv/api
+      # Uploaded photos (/data/photos) and the downloaded CLIP weights (/data/hf).
+      - apidata:/data
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   pgdata:
+  apidata:
