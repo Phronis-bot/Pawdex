@@ -14,8 +14,28 @@ Map<String, dynamic> animalJson({
   String? name,
   int count = 1,
   bool canName = false,
+  String? rarity = 'common',
 }) =>
-    {'id': id, 'species': species, 'name': name, 'sightings_count': count, 'can_name': canName};
+    {
+      'id': id,
+      'species': species,
+      'name': name,
+      'sightings_count': count,
+      'can_name': canName,
+      'rarity': rarity,
+    };
+
+Map<String, dynamic> cardJson({String? name = 'Mo', String rarity = 'legendary'}) => {
+      ...animalJson(id: 'mo', name: name, count: 2, rarity: rarity),
+      'discovered_by': 'Sleepy Mango',
+      'discovered_by_me': false,
+      'coat': 'Calico',
+      'coat_fact': 'Calico cats are almost always female.',
+      'chronicle': [
+        {'sighting_id': 's1', 'created_at': '2026-09-20T10:00:00Z', 'by': 'Sleepy Mango', 'by_me': false},
+        {'sighting_id': 's2', 'created_at': '2026-09-25T10:00:00Z', 'by': 'Brave Noodle', 'by_me': true},
+      ],
+    };
 
 Map<String, dynamic> sightingJson({
   String id = 's1',

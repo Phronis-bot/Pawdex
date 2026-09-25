@@ -17,6 +17,10 @@ enum Outcome {
   newAnimal,
 }
 
+enum Rarity { common, rare, legendary }
+
+Rarity? _rarity(Object? value) => value == null ? null : Rarity.values.byName(value as String);
+
 class AnimalRef {
   AnimalRef({required this.id, required this.name, required this.canName});
 
@@ -38,6 +42,7 @@ class Animal {
     required this.name,
     required this.sightingsCount,
     required this.canName,
+    required this.rarity,
   });
 
   factory Animal.fromJson(Map<String, dynamic> json) => Animal(
@@ -46,6 +51,7 @@ class Animal {
         name: json['name'] as String?,
         sightingsCount: json['sightings_count'] as int,
         canName: json['can_name'] as bool,
+        rarity: _rarity(json['rarity']),
       );
 
   final String id;
@@ -55,6 +61,59 @@ class Animal {
 
   /// True for the discoverer until the name is set.
   final bool canName;
+
+  /// Null only for old animals that were never given a coat.
+  final Rarity? rarity;
+}
+
+class ChronicleEntry {
+  ChronicleEntry({required this.sightingId, required this.createdAt, required this.by, required this.byMe});
+
+  factory ChronicleEntry.fromJson(Map<String, dynamic> json) => ChronicleEntry(
+        sightingId: json['sighting_id'] as String,
+        createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+        by: json['by'] as String,
+        byMe: json['by_me'] as bool,
+      );
+
+  final String sightingId;
+  final DateTime createdAt;
+
+  /// Photographer's nickname.
+  final String by;
+  final bool byMe;
+}
+
+/// Everything on an animal's card. Carries no location.
+class AnimalCard {
+  AnimalCard({
+    required this.animal,
+    required this.discoveredBy,
+    required this.discoveredByMe,
+    required this.coat,
+    required this.coatFact,
+    required this.chronicle,
+  });
+
+  factory AnimalCard.fromJson(Map<String, dynamic> json) => AnimalCard(
+        animal: Animal.fromJson(json),
+        discoveredBy: json['discovered_by'] as String,
+        discoveredByMe: json['discovered_by_me'] as bool,
+        coat: json['coat'] as String?,
+        coatFact: json['coat_fact'] as String?,
+        chronicle: (json['chronicle'] as List)
+            .map((e) => ChronicleEntry.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+
+  final Animal animal;
+  final String discoveredBy;
+  final bool discoveredByMe;
+  final String? coat;
+  final String? coatFact;
+
+  /// Oldest first.
+  final List<ChronicleEntry> chronicle;
 }
 
 class Sighting {
@@ -252,6 +311,19 @@ class ApiClient {
     );
     _check(response);
     return Animal.fromJson(_json(response) as Map<String, dynamic>);
+  }
+
+  Future<AnimalCard> animalCard(String animalId) async {
+    final response = await client.get(Uri.parse('$baseUrl/animals/$animalId'), headers: _headers);
+    _check(response);
+    return AnimalCard.fromJson(_json(response) as Map<String, dynamic>);
+  }
+
+  /// The player's generated nickname.
+  Future<String> myNickname() async {
+    final response = await client.get(Uri.parse('$baseUrl/me'), headers: _headers);
+    _check(response);
+    return (_json(response) as Map<String, dynamic>)['nickname'] as String;
   }
 
   Future<List<Zone>> zones({

@@ -42,11 +42,25 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
+  late final Future<String> _nickname = widget.api.myNickname();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pawdex')),
+      appBar: AppBar(
+        title: const Text('Pawdex'),
+        actions: [
+          FutureBuilder<String>(
+            future: _nickname,
+            builder: (context, snapshot) => snapshot.hasData
+                ? Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: Chip(avatar: const Icon(Icons.person, size: 18), label: Text(snapshot.data!)),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
       // No IndexedStack on purpose: tabs refetch their data every time they are opened.
       body: switch (_tab) {
         0 => SnapScreen(api: widget.api),

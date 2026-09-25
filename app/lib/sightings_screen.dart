@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'animal_card_screen.dart';
 import 'api.dart';
 import 'flows.dart';
 import 'photo_view.dart';
@@ -35,6 +36,9 @@ class _SightingsScreenState extends State<SightingsScreen> {
         );
       } else if (s.animal case final animal? when animal.canName) {
         await askName(context, widget.api, animalId: animal.id, species: s.species);
+      } else if (s.animal case final animal?) {
+        openAnimalCard(context, widget.api, animal.id);
+        return;
       } else {
         return;
       }
@@ -80,9 +84,7 @@ class _SightingsScreenState extends State<SightingsScreen> {
                 leading: ApiPhoto(load: () => widget.api.sightingPhoto(s.id), size: 56),
                 title: Text(_title(s)),
                 subtitle: Text(_subtitle(s)),
-                trailing: s.pending || (s.animal?.canName ?? false)
-                    ? const Icon(Icons.chevron_right)
-                    : null,
+                trailing: s.pending || s.animal != null ? const Icon(Icons.chevron_right) : null,
                 onTap: () => _open(s),
               );
             },

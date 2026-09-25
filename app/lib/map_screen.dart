@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'animal_card_screen.dart';
 import 'api.dart';
 import 'location.dart';
 import 'photo_view.dart';
+import 'rarity.dart';
 import 'species_label.dart';
 
 /// Where the map opens if the device location is unavailable: District 1, Ho Chi Minh City.
@@ -212,6 +214,8 @@ class _ZoneSheetState extends State<_ZoneSheet> {
                 title: Text(animalTitle(a.name, a.species)),
                 subtitle: Text('${speciesLabel(a.species)} · seen ${a.sightingsCount} '
                     '${a.sightingsCount == 1 ? 'time' : 'times'}'),
+                trailing: a.rarity == null ? null : RarityChip(rarity: a.rarity!),
+                onTap: () => openAnimalCard(context, widget.api, a.id),
               ),
           ],
         );

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'animal_card_screen.dart';
 import 'api.dart';
 import 'flows.dart';
 import 'location.dart';
+import 'rarity.dart';
 import 'species_label.dart';
 
 class SnapScreen extends StatefulWidget {
@@ -44,12 +46,14 @@ class _SnapScreenState extends State<SnapScreen> {
       }
       final animal = done.animal;
       final title = animalTitle(animal.name, animal.species);
+      final rarity = animal.rarity == null ? '' : ' ${animal.rarity!.label}!';
       if (done.outcome == Outcome.newAnimal) {
         _show(Icons.auto_awesome, animal.name == null ? 'New ${speciesWord(animal.species)}!' : 'Meet $title!',
-            "You discovered them. They're now in your sightings.");
+            "You discovered them.$rarity", animalId: animal.id);
       } else {
         _show(Icons.pets, "It's $title!",
-            'Seen ${animal.sightingsCount} ${animal.sightingsCount == 1 ? 'time' : 'times'}.');
+            'Seen ${animal.sightingsCount} ${animal.sightingsCount == 1 ? 'time' : 'times'}.',
+            animalId: animal.id);
       }
     } on NoAnimalException catch (e) {
       _show(Icons.search_off, 'No cat or dog', e.message);
@@ -62,7 +66,7 @@ class _SnapScreenState extends State<SnapScreen> {
     }
   }
 
-  void _show(IconData icon, String title, String message) {
+  void _show(IconData icon, String title, String message, {String? animalId}) {
     if (!mounted) return;
     setState(() {
       _result = Card(
@@ -70,6 +74,12 @@ class _SnapScreenState extends State<SnapScreen> {
           leading: Icon(icon, size: 36),
           title: Text(title),
           subtitle: Text(message),
+          trailing: animalId == null
+              ? null
+              : TextButton(
+                  onPressed: () => openAnimalCard(context, widget.api, animalId),
+                  child: const Text('Card'),
+                ),
         ),
       );
     });
