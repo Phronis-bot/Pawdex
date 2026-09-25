@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_session
 from app.models import User
+from app.nicknames import random_nickname
 
 
 def current_user_id(
@@ -18,6 +19,6 @@ def current_user_id(
     except ValueError:
         raise HTTPException(status_code=401, detail="X-User-Id must be a UUID")
 
-    session.execute(insert(User).values(id=user_id).on_conflict_do_nothing())
+    session.execute(insert(User).values(id=user_id, nickname=random_nickname()).on_conflict_do_nothing())
     session.commit()
     return user_id

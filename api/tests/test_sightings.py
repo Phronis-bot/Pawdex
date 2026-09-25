@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from tests.helpers import client, fixture, fresh_spot, new_user, post_photo
+from tests.conftest import BASE_VECTOR, vector_with_similarity
+from tests.helpers import NEARBY, client, fixture, fresh_spot, new_user, post_photo
 
 pytestmark = pytest.mark.usefixtures("fake_embedder")
 
@@ -55,7 +56,7 @@ def test_my_sightings_lists_only_mine_newest_first():
     assert [s["species"] for s in mine] == ["dog", "cat"]
 
 
-def test_stored_photo_has_no_exif_and_is_owner_only():
+def test_stored_photo_has_no_exif():
     headers = new_user()
     sighting = post_photo(headers, with_gps_exif(fixture("cat_3.jpg")), *fresh_spot()).json()["sighting"]
 
@@ -64,8 +65,19 @@ def test_stored_photo_has_no_exif_and_is_owner_only():
     assert photo.headers["content-type"] == "image/jpeg"
     assert len(Image.open(io.BytesIO(photo.content)).getexif()) == 0
 
-    stranger = client.get(f"/sightings/{sighting['id']}/photo", headers=new_user())
-    assert stranger.status_code == 404
+
+def test_linked_photos_are_public_unconfirmed_ones_private(fake_embedder):
+    author, stranger = new_user(), new_user()
+    spot = fresh_spot()
+    fake_embedder.queue.append(BASE_VECTOR)
+    linked = post_photo(author, fixture("cat_1.jpg"), *spot).json()["sighting"]
+    fake_embedder.queue.append(vector_with_similarity(0.6))
+    pending = post_photo(author, fixture("cat_2.jpg"), spot[0] + NEARBY, spot[1]).json()["sighting"]
+    assert pending["pending"] is True
+
+    assert client.get(f"/sightings/{linked['id']}/photo", headers=stranger).status_code == 200
+    assert client.get(f"/sightings/{pending['id']}/photo", headers=stranger).status_code == 404
+    assert client.get(f"/sightings/{pending['id']}/photo", headers=author).status_code == 200
 
 
 def test_requires_valid_user_id():

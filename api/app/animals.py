@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.auth import current_user_id
 from app.db import get_session
 from app.models import Animal, Sighting
-from app.schemas import AnimalOut, animal_out
+from app.schemas import AnimalCard, AnimalOut, animal_card, animal_out
 from app.storage import PhotoStorage, get_storage
 
 router = APIRouter(prefix="/animals", tags=["animals"])
@@ -20,6 +20,16 @@ def _animal(session: Session, animal_id: uuid.UUID) -> Animal:
     if animal is None:
         raise HTTPException(status_code=404, detail="Animal not found")
     return animal
+
+
+@router.get("/{animal_id}", response_model=AnimalCard)
+def get_animal(
+    animal_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(current_user_id),
+    session: Session = Depends(get_session),
+):
+    """The animal's card: who found it, its coat, rarity and photo chronicle. No locations."""
+    return animal_card(session, _animal(session, animal_id), user_id)
 
 
 class NameIn(BaseModel):

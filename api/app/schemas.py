@@ -6,8 +6,9 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.coats import COATS, Rarity
 from app.matching import Candidate, Outcome
-from app.models import Animal, Sighting, Species
+from app.models import Animal, Sighting, Species, User
 
 
 class AnimalRef(BaseModel):
@@ -23,6 +24,24 @@ class AnimalOut(BaseModel):
     sightings_count: int
     # True only for the discoverer, and only until the name is set.
     can_name: bool
+    # Null only for animals discovered before coats existed and not yet backfilled.
+    rarity: Rarity | None
+
+
+class ChronicleEntry(BaseModel):
+    sighting_id: uuid.UUID
+    created_at: datetime
+    by: str  # photographer's nickname
+    by_me: bool
+
+
+class AnimalCard(AnimalOut):
+    discovered_by: str  # discoverer's nickname
+    discovered_by_me: bool
+    coat: str | None
+    coat_fact: str | None
+    # Oldest first; photos via GET /sightings/{sighting_id}/photo.
+    chronicle: list[ChronicleEntry]
 
 
 class SightingOut(BaseModel):
@@ -56,6 +75,28 @@ def animal_out(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalOu
         name=animal.name,
         sightings_count=count,
         can_name=_can_name(animal, user_id),
+        rarity=animal.rarity,
+    )
+
+
+def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalCard:
+    coat = COATS[animal.species].get(animal.coat) if animal.coat else None
+    entries = session.execute(
+        select(Sighting.id, Sighting.created_at, Sighting.user_id, User.nickname)
+        .join(User, User.id == Sighting.user_id)
+        .where(Sighting.animal_id == animal.id)
+        .order_by(Sighting.created_at)
+    ).all()
+    return AnimalCard(
+        **animal_out(session, animal, user_id).model_dump(),
+        discovered_by=animal.discoverer.nickname,
+        discovered_by_me=animal.discoverer_id == user_id,
+        coat=coat.label if coat else None,
+        coat_fact=coat.fact if coat else None,
+        chronicle=[
+            ChronicleEntry(sighting_id=sid, created_at=at, by=nickname, by_me=uid == user_id)
+            for sid, at, uid, nickname in entries
+        ],
     )
 
 

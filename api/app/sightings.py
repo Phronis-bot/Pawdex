@@ -9,11 +9,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.auth import current_user_id
 from app.classifier import ClipClassifier, get_classifier
+from app.coats import new_animal
 from app.config import settings
 from app.db import get_session
 from app.embedder import Embedder, get_embedder
 from app.matching import Outcome, decide, find_candidates
-from app.models import Animal, Sighting
+from app.models import Sighting
 from app.photos import InvalidImage, encode_for_storage, load_image
 from app.schemas import CandidateOut, SightingOut, SightingResult, candidates_out, sighting_out, sighting_result
 from app.storage import PhotoStorage, get_storage
@@ -70,7 +71,7 @@ def create_sighting(
     if outcome is Outcome.match:
         sighting.animal_id = candidates[0].animal.id
     elif outcome is Outcome.new:
-        sighting.animal = Animal(species=sighting.species, discoverer_id=user_id)
+        sighting.animal = new_animal(image, sighting.species, user_id)
     # Outcome.uncertain: stays pending until the player answers via /resolve.
     session.commit()
     return sighting_result(session, sighting, outcome, candidates, user_id)
@@ -126,12 +127,14 @@ def resolve_sighting(
     body: ResolveIn,
     user_id: uuid.UUID = Depends(current_user_id),
     session: Session = Depends(get_session),
+    storage: PhotoStorage = Depends(get_storage),
 ):
     """The player's answer to "Is it Mo, or someone new?"."""
     sighting = _pending_sighting(session, sighting_id, user_id)
 
     if body.animal_id is None:
-        sighting.animal = Animal(species=sighting.species, discoverer_id=user_id)
+        image = load_image(storage.read(sighting.photo_key))
+        sighting.animal = new_animal(image, sighting.species, user_id)
         outcome = Outcome.new
     else:
         # Only animals we actually offered: no linking to arbitrary animals elsewhere.
@@ -150,5 +153,9 @@ def sighting_photo(
     session: Session = Depends(get_session),
     storage: PhotoStorage = Depends(get_storage),
 ):
-    sighting = _own_sighting(session, sighting_id, user_id)
+    """Photos of sightings linked to an animal are public (they form its chronicle);
+    unconfirmed ones stay private to their author."""
+    sighting = session.get(Sighting, sighting_id)
+    if sighting is None or (sighting.animal_id is None and sighting.user_id != user_id):
+        raise HTTPException(status_code=404, detail="Sighting not found")
     return Response(content=storage.read(sighting.photo_key), media_type="image/jpeg")

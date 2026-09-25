@@ -23,6 +23,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    nickname: Mapped[str] = mapped_column(String(40))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -36,7 +37,12 @@ class Animal(Base):
     # Given once by the discoverer and never changed.
     name: Mapped[str | None] = mapped_column(String(30))
     discoverer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    # Key into app.coats.COATS, detected from the discovering photo; sets the rarity.
+    coat: Mapped[str | None] = mapped_column(String(30))
+    rarity: Mapped[str | None] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    discoverer: Mapped[User] = relationship()
 
 
 class Sighting(Base):

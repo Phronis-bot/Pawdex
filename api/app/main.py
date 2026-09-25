@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -5,13 +7,15 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.animals import router as animals_router
+from app.auth import current_user_id
+from app.config import settings
 from app.db import get_session
 from app.map import router as map_router
+from app.models import User
 from app.sightings import router as sightings_router
 
-app = FastAPI(title="Pawdex API", version="0.3.0")
+app = FastAPI(title="Pawdex API", version="0.4.0")
 app.include_router(sightings_router)
 app.include_router(animals_router)
 app.include_router(map_router)
@@ -22,6 +26,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/me")
+def me(user_id: uuid.UUID = Depends(current_user_id), session: Session = Depends(get_session)):
+    """The anonymous player's generated nickname."""
+    return {"id": str(user_id), "nickname": session.get(User, user_id).nickname}
 
 
 @app.get("/health")
