@@ -74,7 +74,7 @@ flutter run -d chrome
 - **Эмулятор Android**: адрес `10.0.2.2:8000` подставляется автоматически.
 - **Android-телефон по USB** (включена отладка по USB, `flutter devices` его видит). Пробросьте порт, чтобы `localhost:8000` на телефоне вёл на компьютер. Это нужно делать заново после каждого переподключения кабеля:
   ```bash
-  %LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe reverse tcp:8000 tcp:8000
+  & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" reverse tcp:8000 tcp:8000
   ```
   ```bash
   flutter run --dart-define=API_BASE_URL=http://localhost:8000
