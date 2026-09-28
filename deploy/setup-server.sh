@@ -18,8 +18,12 @@ ufw allow 80/tcp
 ufw allow 443/tcp
 ufw --force enable
 
-# Log in with the SSH key only, never a password.
-sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
-systemctl reload ssh || systemctl reload sshd
+# Log in with the SSH key only, never a password. A drop-in named 00-* is read first, so it
+# wins over the hosting image's 50-cloud-init.conf (which turns passwords back on).
+printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n' \
+    > /etc/ssh/sshd_config.d/00-pawdex.conf
+sshd -t
+# Ubuntu 24.04 starts sshd per connection via ssh.socket; older releases run ssh.service.
+systemctl restart ssh.socket 2>/dev/null || systemctl restart ssh
 
 echo "Server ready. Next: create /opt/pawdex/.env from deploy/.env.example, then run deploy/push.ps1 from your PC"
