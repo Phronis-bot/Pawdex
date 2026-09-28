@@ -4,7 +4,7 @@ __pycache__/
 .venv/
 .pytest_cache/
 
-# Local env / data
+# Local env / data (server secrets live in .env; only deploy/.env.example is committed)
 .env
 data/
 

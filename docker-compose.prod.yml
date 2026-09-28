@@ -1,0 +1,57 @@
+# Production: Pawdex behind Caddy, which gets and renews the HTTPS certificate itself.
+# Used on the server from the deploy/ directory:  docker compose -f docker-compose.prod.yml up -d --build
+# Settings come from .env next to this file (see deploy/.env.example).
+services:
+  db:
+    build: ./db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pawdex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: pawdex
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U pawdex -d pawdex"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    environment:
+      PAWDEX_DATABASE_URL: postgresql+psycopg://pawdex:${POSTGRES_PASSWORD}@db:5432/pawdex
+      # The app talks to the API directly; browsers never need to.
+      PAWDEX_CORS_ORIGINS: https://${PAWDEX_DOMAIN}
+    # No --reload in production. --proxy-headers so upload limits see the player's real IP
+    # (from Caddy's X-Forwarded-For), not Caddy's; the API port is not published anywhere else.
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"
+    volumes:
+      - apidata:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PAWDEX_DOMAIN: ${PAWDEX_DOMAIN:?set PAWDEX_DOMAIN in .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  apidata:
+  caddy_data:
+  caddy_config:

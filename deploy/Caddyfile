@@ -1,0 +1,8 @@
+{$PAWDEX_DOMAIN} {
+	encode gzip
+	# Photos are up to 15 MB; leave a little headroom for the multipart envelope.
+	request_body {
+		max_size 20MB
+	}
+	reverse_proxy api:8000
+}
