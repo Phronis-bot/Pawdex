@@ -15,7 +15,7 @@ import 'species_label.dart';
 const _fallbackCenter = LatLng(10.7769, 106.7009);
 
 Future<LatLng> _deviceLocation() async {
-  final p = await currentPosition();
+  final p = await currentLocation();
   return LatLng(p.latitude, p.longitude);
 }
 

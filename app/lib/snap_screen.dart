@@ -31,7 +31,7 @@ class _SnapScreenState extends State<SnapScreen> {
       _result = null;
     });
     try {
-      final position = await currentPosition();
+      final position = await currentLocation();
       final result = await widget.api.createSighting(
         photo: await file.readAsBytes(),
         latitude: position.latitude,
