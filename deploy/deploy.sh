@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.."
 test -f .env || { echo "Missing /opt/pawdex/.env - copy deploy/.env.example to .env and fill it in"; exit 1; }
 
 docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+# Compose doesn't restart Caddy when only its (bind-mounted) Caddyfile changed.
+docker compose -f docker-compose.prod.yml exec -T caddy caddy reload --config /etc/caddy/Caddyfile
 
 # Download and load every model now, so the first player doesn't wait minutes.
 docker compose -f docker-compose.prod.yml exec -T api python -m app.warmup
