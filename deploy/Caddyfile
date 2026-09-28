@@ -4,5 +4,16 @@
 	request_body {
 		max_size 20MB
 	}
-	reverse_proxy api:8000
+
+	# The Flutter web build: the Telegram Mini App.
+	redir /play /play/
+	handle_path /play/* {
+		root * /srv/web
+		try_files {path} /index.html
+		file_server
+	}
+
+	handle {
+		reverse_proxy api:8000
+	}
 }

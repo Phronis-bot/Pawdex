@@ -37,6 +37,24 @@ void main() {
     expect(result.animal!.canName, isTrue);
   });
 
+  test('inside Telegram, requests carry the signed Telegram data instead of a device id', () async {
+    late http.Request sent;
+    final api = ApiClient(
+      baseUrl: 'http://api',
+      userId: '',
+      telegramInitData: 'user=%7B%22id%22%3A42%7D&hash=abc',
+      client: MockClient((request) async {
+        sent = request;
+        return jsonResponse([]);
+      }),
+    );
+
+    await api.mySightings();
+
+    expect(sent.headers['X-Telegram-Init-Data'], 'user=%7B%22id%22%3A42%7D&hash=abc');
+    expect(sent.headers.containsKey('X-User-Id'), isFalse);
+  });
+
   test('createSighting parses an uncertain result with candidates', () async {
     final api = apiWith((_) async => jsonResponse(
           sightingResultJson(

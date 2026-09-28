@@ -25,6 +25,10 @@ services:
       # The app talks to the API directly; browsers never need to.
       PAWDEX_CORS_ORIGINS: https://${PAWDEX_DOMAIN}
       PAWDEX_PRELOAD_MODELS: "true"
+      PAWDEX_PUBLIC_URL: https://${PAWDEX_DOMAIN}
+      # Optional: set in .env to enable the Telegram bot and Mini App sign-in.
+      PAWDEX_TELEGRAM_BOT_TOKEN: ${PAWDEX_TELEGRAM_BOT_TOKEN:-}
+      PAWDEX_TELEGRAM_WEBHOOK_SECRET: ${PAWDEX_TELEGRAM_WEBHOOK_SECRET:-}
     # No --reload in production. --proxy-headers so upload limits see the player's real IP
     # (from Caddy's X-Forwarded-For), not Caddy's; the API port is not published anywhere else.
     command: >
@@ -46,6 +50,8 @@ services:
       PAWDEX_DOMAIN: ${PAWDEX_DOMAIN:?set PAWDEX_DOMAIN in .env}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Flutter web build (Telegram Mini App), uploaded by deploy/push.ps1 -Web.
+      - ./web:/srv/web:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

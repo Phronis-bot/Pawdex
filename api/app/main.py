@@ -17,21 +17,27 @@ from app.map import router as map_router
 from app.models import User
 from app.reports import router as reports_router
 from app.sightings import router as sightings_router
+from app.telegram import register_bot
+from app.telegram import router as telegram_router
 from app.warmup import main as warmup
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     if settings.preload_models:
         # In the background, so /health answers while the models load.
         threading.Thread(target=warmup, name="preload-models", daemon=True).start()
+    if settings.telegram_bot_token:
+        threading.Thread(target=register_bot, name="register-telegram-bot", daemon=True).start()
     yield
 
 
-app = FastAPI(title="Pawdex API", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title="Pawdex API", version="0.6.0", lifespan=lifespan)
 app.include_router(sightings_router)
 app.include_router(reports_router)
 app.include_router(animals_router)
 app.include_router(map_router)
+app.include_router(telegram_router)
 
 app.add_middleware(
     CORSMiddleware,

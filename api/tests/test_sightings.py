@@ -81,7 +81,7 @@ def test_linked_photos_are_public_unconfirmed_ones_private(fake_embedder):
 
 
 def test_requires_valid_user_id():
-    assert client.get("/sightings/mine").status_code == 422
+    assert client.get("/sightings/mine").status_code == 401
     assert client.get("/sightings/mine", headers={"X-User-Id": "not-a-uuid"}).status_code == 401
 
 

@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     # Minimum probability of the winning cat/dog group to accept the photo as an animal.
     min_animal_confidence: float = 0.5
 
+    # Public base URL of this API (links in the Telegram bot, the Mini App at /play/).
+    public_url: str = "http://localhost:8000"
+    # Telegram bot for the Mini App; empty disables Telegram sign-in and the bot.
+    telegram_bot_token: str = ""
+    # Random string Telegram echoes on every webhook call, so nobody else can post to it.
+    telegram_webhook_secret: str = ""
+
     # Load every model when the API starts (production), instead of on the first photo.
     preload_models: bool = False
 

@@ -120,7 +120,7 @@ class _CardBody extends StatelessWidget {
                 for (final fact in breed.facts) _Bullet(fact),
               ],
             ),
-          null => _InfoCard(
+          null => const _InfoCard(
               icon: Icons.pets,
               title: 'Breed unknown',
               children: [

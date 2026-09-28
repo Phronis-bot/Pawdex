@@ -284,13 +284,25 @@ class ApiException implements Exception {
 }
 
 class ApiClient {
-  ApiClient({required this.baseUrl, required this.userId, required this.client});
+  ApiClient({
+    required this.baseUrl,
+    required this.userId,
+    required this.client,
+    this.telegramInitData,
+  });
 
   final String baseUrl;
+  /// Anonymous id stored on the device (the Android/iOS app).
   final String userId;
+
+  /// Signed Telegram player data when running as the Telegram Mini App; used instead
+  /// of [userId], and verified by the server.
+  final String? telegramInitData;
   final http.Client client;
 
-  Map<String, String> get _headers => {'X-User-Id': userId};
+  Map<String, String> get _headers => telegramInitData != null
+      ? {'X-Telegram-Init-Data': telegramInitData!}
+      : {'X-User-Id': userId};
   Map<String, String> get _jsonHeaders => {..._headers, 'Content-Type': 'application/json'};
 
   Future<SightingResult> createSighting({

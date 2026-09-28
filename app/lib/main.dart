@@ -7,12 +7,20 @@ import 'device_id.dart';
 import 'map_screen.dart';
 import 'sightings_screen.dart';
 import 'snap_screen.dart';
+import 'telegram.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final userId = await loadOrCreateUserId();
+  // Inside Telegram the player is their Telegram account; elsewhere, this device.
+  final initData = telegramInitData();
+  final userId = initData == null ? await loadOrCreateUserId() : '';
   runApp(PawdexApp(
-    api: ApiClient(baseUrl: apiBaseUrl, userId: userId, client: http.Client()),
+    api: ApiClient(
+      baseUrl: apiBaseUrl,
+      userId: userId,
+      telegramInitData: initData,
+      client: http.Client(),
+    ),
   ));
 }
 
