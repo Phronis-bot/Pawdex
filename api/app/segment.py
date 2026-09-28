@@ -25,7 +25,13 @@ class AnimalRegion:
 
 @lru_cache
 def _model():
-    return maskrcnn_resnet50_fpn_v2(weights=MaskRCNN_ResNet50_FPN_V2_Weights.DEFAULT).eval()
+    # The model rescales every input to min_size internally (800 by default). 400 is
+    # ~1.7x faster on the server's CPU and still found the animal in all test photos;
+    # 320 started missing some.
+    side = settings.segment_model_side
+    return maskrcnn_resnet50_fpn_v2(
+        weights=MaskRCNN_ResNet50_FPN_V2_Weights.DEFAULT, min_size=side, max_size=side * 5 // 3
+    ).eval()
 
 
 @torch.inference_mode()

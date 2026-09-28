@@ -30,6 +30,8 @@ class Settings(BaseSettings):
 
     # Finding the animal in the photo (app/segment.py).
     segment_max_side: int = 640
+    # Short side the detector works at (see app/segment.py).
+    segment_model_side: int = 400
     segment_min_score: float = 0.5
     # Stored photos get everything but the animal blurred (radius as a fraction of the
     # longest side), so shop signs and house numbers don't reveal where it lives.
