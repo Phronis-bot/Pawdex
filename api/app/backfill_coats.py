@@ -35,8 +35,11 @@ def main() -> None:
             if animal.coat is None:
                 animal.coat = detect_coat(image, animal.species)
                 animal.rarity = COATS[animal.species][animal.coat].rarity.value
-            animal.breed = detect_breed(image, animal.species)
-            print(f"{animal.name or animal.id}: {animal.coat} ({animal.rarity}), breed={animal.breed or 'mixed'}")
+            breed = detect_breed(image, animal.species)
+            animal.breed = breed[0] if breed else None
+            animal.breed_certainty = breed[1].value if breed else None
+            label = f"{animal.breed} ({animal.breed_certainty})" if breed else "unknown"
+            print(f"{animal.name or animal.id}: {animal.coat} ({animal.rarity}), breed={label}")
         session.commit()
 
 

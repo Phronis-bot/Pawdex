@@ -7,6 +7,7 @@ card and share image, never on the map: purebred animals are the ones that get s
 Texts are for players: short, true, and hedged ("said to", "legend has it") where a
 story is folklore rather than documented history.
 """
+import enum
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -188,6 +189,9 @@ BREEDS: dict[Species, dict[str, Breed]] = {
                 "The gene that folds the ears affects cartilage everywhere and causes painful joint "
                 "disease, so breeding Folds is banned or discouraged in several countries.",
             ),
+            # The fold is too subtle for the model: British-looking street cats (Larry,
+            # Gladstone) scored as Scottish Fold, while a real Fold scored only 0.59.
+            detectable=False,
         ),
         "russian_blue": Breed(
             "Russian Blue", "Russia",
@@ -877,11 +881,25 @@ def breed_scores(image: Image.Image, species: Species) -> tuple[list[tuple[str, 
     return ranked, sum(probs[len(keys):])
 
 
-def detect_breed(image: Image.Image, species: Species) -> str | None:
-    """A breed key only when CLIP is confident and it beats "mixed breed"; otherwise None."""
-    ranked, mixed = breed_scores(image, species)
+class Certainty(str, enum.Enum):
+    confirmed = "confirmed"  # "Siamese"
+    likely = "likely"  # "Looks like a Siamese"
+
+
+def decide_breed(
+    ranked: list[tuple[str, float]], mixed: float, species: Species
+) -> tuple[str, Certainty] | None:
+    """The breed and how sure we are, or None for "breed unknown". Never beats "mixed"."""
     key, prob = ranked[0]
-    threshold = settings.breed_min_confidence[species.value]
-    if prob >= threshold and prob > mixed:
-        return key
+    if prob <= mixed:
+        return None
+    if prob >= settings.breed_min_confidence[species.value]:
+        return key, Certainty.confirmed
+    if prob >= settings.breed_likely_confidence[species.value]:
+        return key, Certainty.likely
     return None
+
+
+def detect_breed(image: Image.Image, species: Species) -> tuple[str, Certainty] | None:
+    ranked, mixed = breed_scores(image, species)
+    return decide_breed(ranked, mixed, species)

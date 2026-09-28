@@ -43,6 +43,8 @@ class Animal(Base):
     # Key into app.breeds.BREEDS, only when the model was confident; null = mixed breed.
     # Shown on the card only, never on the map (purebreds are the ones that get stolen).
     breed: Mapped[str | None] = mapped_column(String(40))
+    # "confirmed" ("Siamese") or "likely" ("Looks like a Siamese"); null when breed is null.
+    breed_certainty: Mapped[str | None] = mapped_column(String(10))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     discoverer: Mapped[User] = relationship()

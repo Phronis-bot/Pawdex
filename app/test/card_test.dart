@@ -14,6 +14,7 @@ import 'fixtures.dart';
 
 const siamese = {
   'name': 'Siamese',
+  'certain': true,
   'origin': 'Thailand',
   'history': 'One of the oldest known breeds.',
   'relatives': 'Cousin of the Birman.',
@@ -45,7 +46,7 @@ void main() {
     // The page itself, not the chronicle grid nested inside it.
     final page = find.byType(Scrollable).first;
     await tester.scrollUntilVisible(find.text('★★★ Legendary'), 200, scrollable: page);
-    expect(find.text('Cat · Mixed breed · Calico'), findsOneWidget);
+    expect(find.text('Cat · Breed unknown · Calico'), findsOneWidget);
     expect(find.text('Discovered by Sleepy Mango'), findsOneWidget);
     expect(find.textContaining('Seen 2 times'), findsOneWidget);
 
@@ -124,9 +125,15 @@ void main() {
     expect(find.text('Cousin of the Birman.'), findsOneWidget);
     expect(find.text('Very talkative.'), findsOneWidget);
 
+    await open(cardJson(breed: {...siamese, 'certain': false}));
+    expect(find.text('Cat · Looks like a Siamese · Calico'), findsOneWidget);
+    expect(find.text('Looks like a Siamese · from Thailand'), findsOneWidget);
+    expect(find.textContaining('Our best guess from the photo'), findsOneWidget);
+
     await open(cardJson());
     expect(find.textContaining('from Thailand'), findsNothing);
-    expect(find.text('Mixed breed'), findsOneWidget);
+    expect(find.text('Breed unknown'), findsOneWidget);
+    expect(find.text('Cat · Breed unknown · Calico'), findsOneWidget);
   });
 
   testWidgets('share card shows name, rarity and discoverer but no place', (tester) async {
@@ -142,7 +149,7 @@ void main() {
 
     expect(find.text('Mo'), findsOneWidget);
     expect(find.text('LEGENDARY'), findsOneWidget);
-    expect(find.text('Cat · Mixed breed · Calico'), findsOneWidget);
+    expect(find.text('Cat · Calico'), findsOneWidget);
     expect(find.text('Seen 2 times · discovered by Sleepy Mango'), findsOneWidget);
 
     final withBreed = AnimalCard.fromJson(cardJson(breed: siamese));

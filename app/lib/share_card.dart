@@ -131,7 +131,7 @@ class ShareCard extends StatelessWidget {
           Text(
             [
               speciesLabel(animal.species),
-              card.breed?.name ?? 'Mixed breed',
+              if (card.breed != null) card.breed!.title,
               if (card.coat != null) card.coat!,
             ].join(' · '),
             style: white.copyWith(fontSize: 16),

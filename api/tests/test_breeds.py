@@ -4,7 +4,7 @@ from pathlib import Path
 import h3
 import pytest
 
-from app.breeds import BREEDS, MIXED_PROMPTS, detect_breed
+from app.breeds import BREEDS, MIXED_PROMPTS, Certainty, decide_breed, detect_breed
 from app.config import settings
 from app.models import Species
 from app.photos import load_image
@@ -35,7 +35,7 @@ def test_breed_table_is_complete():
     ],
 )
 def test_recognises_clear_purebreds(path, species, breed):
-    assert detect_breed(load_image((EVAL / path).read_bytes()), species) == breed
+    assert detect_breed(load_image((EVAL / path).read_bytes()), species) == (breed, Certainty.confirmed)
 
 
 @pytest.mark.parametrize(
@@ -61,6 +61,7 @@ def test_breed_is_on_the_card_only(fake_embedder):
 
     card = client.get(f"/animals/{animal_id}", headers=player).json()
     assert card["breed"]["name"] == "Labrador Retriever"
+    assert card["breed"]["certain"] is True
     assert "Newfoundland" in card["breed"]["history"]
     assert "Golden" in card["breed"]["relatives"]
     assert len(card["breed"]["facts"]) == 2
@@ -85,3 +86,19 @@ def test_street_dog_card_has_no_breed(fake_embedder):
     animal_id = post_photo(player, fixture("dog_3.jpg"), *fresh_spot()).json()["animal"]["id"]
 
     assert client.get(f"/animals/{animal_id}", headers=player).json()["breed"] is None
+
+
+@pytest.mark.parametrize(
+    "species,top,mixed,expected",
+    [
+        (Species.cat, 0.85, 0.05, ("siamese", Certainty.confirmed)),
+        # Shishka: the model said Siamese 0.71 - below "confirmed" for cats, but not unknown.
+        (Species.cat, 0.71, 0.00, ("siamese", Certainty.likely)),
+        (Species.cat, 0.55, 0.05, None),
+        (Species.dog, 0.45, 0.10, ("siamese", Certainty.likely)),
+        # "Mixed breed" always wins ties and beats a stronger-looking breed.
+        (Species.cat, 0.90, 0.95, None),
+    ],
+)
+def test_three_levels_of_certainty(species, top, mixed, expected):
+    assert decide_breed([("siamese", top), ("birman", 0.01)], mixed, species) == expected

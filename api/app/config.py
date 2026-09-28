@@ -57,6 +57,11 @@ class Settings(BaseSettings):
     # animal is worse than a missed one.
     # Cats need 0.8: below it, non-pedigree British street cats get labelled Scottish Fold.
     breed_min_confidence: dict[str, float] = {"cat": 0.8, "dog": 0.6}
+    # Between this and breed_min_confidence the card says "Looks like a Siamese" instead of
+    # claiming the breed (or wrongly calling a likely Siamese "mixed").
+    # On the eval set, dogs at 0.4 put no street dog in a breed; cats need 0.6 (at 0.5 a
+    # black street cat "looked like" an Exotic Shorthair).
+    breed_likely_confidence: dict[str, float] = {"cat": 0.6, "dog": 0.4}
 
     # Map. Animals are shown only as H3 hexagon cells, never as points (rule 3: pets
     # get stolen). Resolution 9 hexagons are ~350 m across.

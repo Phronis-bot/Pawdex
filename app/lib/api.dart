@@ -87,6 +87,7 @@ class ChronicleEntry {
 class BreedInfo {
   BreedInfo({
     required this.name,
+    required this.certain,
     required this.origin,
     required this.history,
     required this.relatives,
@@ -95,6 +96,7 @@ class BreedInfo {
 
   factory BreedInfo.fromJson(Map<String, dynamic> json) => BreedInfo(
         name: json['name'] as String,
+        certain: json['certain'] as bool,
         origin: json['origin'] as String,
         history: json['history'] as String,
         relatives: json['relatives'] as String,
@@ -102,8 +104,17 @@ class BreedInfo {
       );
 
   final String name;
+
+  /// False: "looks like" - the photo matches this breed best, but not surely enough.
+  final bool certain;
   final String origin;
   final String history;
+
+  /// "a Siamese", "an Akita".
+  String get withArticle => '${'AEIOU'.contains(name[0]) ? 'an' : 'a'} $name';
+
+  /// "Siamese" or "Looks like a Siamese".
+  String get title => certain ? name : 'Looks like $withArticle';
 
   /// Relatives and look-alikes.
   final String relatives;

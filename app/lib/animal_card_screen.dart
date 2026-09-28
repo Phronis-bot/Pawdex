@@ -87,7 +87,7 @@ class _CardBody extends StatelessWidget {
         Text(
           [
             speciesLabel(animal.species),
-            card.breed?.name ?? 'Mixed breed',
+            card.breed?.title ?? 'Breed unknown',
             if (card.coat != null) card.coat!,
           ].join(' · '),
           style: text.titleMedium,
@@ -102,8 +102,16 @@ class _CardBody extends StatelessWidget {
         switch (card.breed) {
           final breed? => _InfoCard(
               icon: Icons.public,
-              title: '${breed.name} · from ${breed.origin}',
+              title: '${breed.title} · from ${breed.origin}',
               children: [
+                if (!breed.certain) ...[
+                  Text(
+                    'Our best guess from the photo, not a certainty — '
+                    'it could also be a mix with ${breed.withArticle} look.',
+                    style: text.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 Text(breed.history),
                 const SizedBox(height: 12),
                 Text('Relatives & look-alikes', style: text.titleSmall),
@@ -114,10 +122,11 @@ class _CardBody extends StatelessWidget {
             ),
           null => _InfoCard(
               icon: Icons.pets,
-              title: 'Mixed breed',
+              title: 'Breed unknown',
               children: [
                 Text(
-                  'No pedigree, like most street ${speciesWord(animal.species)}s in the world — '
+                  "We couldn't tell a breed from this photo. Most street "
+                  '${speciesWord(animal.species)}s in the world have no pedigree — '
                   'which makes every one of them one of a kind.',
                 ),
               ],

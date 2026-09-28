@@ -206,10 +206,12 @@ def detect_coat(image: Image.Image, species: Species) -> str:
 def new_animal(image: Image.Image, species: Species, discoverer_id) -> Animal:
     """A freshly discovered animal; coat, rarity and breed come from the discovering photo."""
     coat = detect_coat(image, species)
+    breed = detect_breed(image, species)
     return Animal(
         species=species,
         discoverer_id=discoverer_id,
         coat=coat,
         rarity=COATS[species][coat].rarity.value,
-        breed=detect_breed(image, species),
+        breed=breed[0] if breed else None,
+        breed_certainty=breed[1].value if breed else None,
     )

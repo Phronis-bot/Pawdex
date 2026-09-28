@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.breeds import BREEDS
+from app.breeds import BREEDS, Certainty
 from app.coats import COATS, Rarity
 from app.matching import Candidate, Outcome
 from app.models import Animal, Sighting, Species, User
@@ -38,6 +38,8 @@ class ChronicleEntry(BaseModel):
 
 class BreedOut(BaseModel):
     name: str
+    # False means "looks like": the photo matches this breed best, but not surely enough.
+    certain: bool
     origin: str
     history: str
     relatives: str
@@ -109,6 +111,7 @@ def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalC
         coat_facts=list(coat.facts) if coat else [],
         breed=BreedOut(
             name=breed.label,
+            certain=animal.breed_certainty == Certainty.confirmed.value,
             origin=breed.origin,
             history=breed.history,
             relatives=breed.relatives,
