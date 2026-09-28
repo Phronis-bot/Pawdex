@@ -16,6 +16,7 @@ from app.embedder import Embedder, get_embedder
 from app.matching import Outcome, decide, find_candidates
 from app.models import Sighting
 from app.photos import InvalidImage, encode_for_storage, load_image
+from app.ratelimit import upload_allowed
 from app.segment import prepare_photo, reid_model_name
 from app.schemas import CandidateOut, SightingOut, SightingResult, candidates_out, sighting_out, sighting_result
 from app.storage import PhotoStorage, get_storage
@@ -23,7 +24,7 @@ from app.storage import PhotoStorage, get_storage
 router = APIRouter(prefix="/sightings", tags=["sightings"])
 
 
-@router.post("", status_code=201, response_model=SightingResult)
+@router.post("", status_code=201, response_model=SightingResult, dependencies=[Depends(upload_allowed)])
 def create_sighting(
     photo: UploadFile,
     latitude: float = Form(ge=-90, le=90),
@@ -156,8 +157,9 @@ def sighting_photo(
     storage: PhotoStorage = Depends(get_storage),
 ):
     """Photos of sightings linked to an animal are public (they form its chronicle);
-    unconfirmed ones stay private to their author."""
+    unconfirmed and reported-hidden ones stay private to their author."""
     sighting = session.get(Sighting, sighting_id)
-    if sighting is None or (sighting.animal_id is None and sighting.user_id != user_id):
+    public = sighting is not None and sighting.animal_id is not None and not sighting.hidden
+    if sighting is None or (not public and sighting.user_id != user_id):
         raise HTTPException(status_code=404, detail="Sighting not found")
     return Response(content=storage.read(sighting.photo_key), media_type="image/jpeg")

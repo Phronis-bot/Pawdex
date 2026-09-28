@@ -14,6 +14,8 @@ _test_url = _dev_url.set(database=f"{_dev_url.database}_test")
 # Must happen before anything imports app.config.
 os.environ["PAWDEX_DATABASE_URL"] = _test_url.render_as_string(hide_password=False)
 os.environ["PAWDEX_STORAGE_DIR"] = tempfile.mkdtemp(prefix="pawdex-photos-")
+# Every test upload comes from the same test client "IP"; test_abuse.py sets real limits.
+os.environ["PAWDEX_UPLOADS_PER_IP_PER_HOUR"] = "100000"
 
 
 def _prepare_database() -> None:

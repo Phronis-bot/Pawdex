@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     # Minimum probability of the winning cat/dog group to accept the photo as an animal.
     min_animal_confidence: float = 0.5
 
+    # Abuse protection.
+    uploads_per_user_per_hour: int = 30
+    uploads_per_ip_per_hour: int = 100
+    # A photo is hidden from other players once this many different players report it.
+    reports_to_hide: int = 3
+
     # Finding the animal in the photo (app/segment.py).
     segment_max_side: int = 640
     segment_min_score: float = 0.5

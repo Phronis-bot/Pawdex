@@ -13,10 +13,12 @@ from app.config import settings
 from app.db import get_session
 from app.map import router as map_router
 from app.models import User
+from app.reports import router as reports_router
 from app.sightings import router as sightings_router
 
-app = FastAPI(title="Pawdex API", version="0.4.0")
+app = FastAPI(title="Pawdex API", version="0.5.0")
 app.include_router(sightings_router)
+app.include_router(reports_router)
 app.include_router(animals_router)
 app.include_router(map_router)
 

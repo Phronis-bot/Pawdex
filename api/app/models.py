@@ -4,7 +4,7 @@ from datetime import datetime
 
 from geoalchemy2 import Geography
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -68,9 +68,25 @@ class Sighting(Base):
         DateTime(timezone=True), server_default=func.now(), index=True
     )
 
+    # Hidden from everyone but its author after enough reports (see app/reports.py).
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
     animal: Mapped[Animal | None] = relationship()
 
     @property
     def pending(self) -> bool:
         """Waiting for the player to say which animal this is."""
         return self.animal_id is None and self.embedding is not None
+
+
+class Report(Base):
+    """A player flagging someone else's photo (a person in it, not an animal, rude...)."""
+
+    __tablename__ = "reports"
+    __table_args__ = (UniqueConstraint("sighting_id", "user_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    sighting_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sightings.id"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    reason: Mapped[str] = mapped_column(String(30))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

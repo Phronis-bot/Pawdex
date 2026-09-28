@@ -378,6 +378,19 @@ class ApiClient {
     return (_json(response) as List).map((e) => Animal.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  /// Flag someone else's photo. Reasons: not_an_animal, person_visible,
+  /// reveals_location, inappropriate, other.
+  Future<void> reportSighting(String sightingId, String reason) async {
+    final response = await client.post(
+      Uri.parse('$baseUrl/sightings/$sightingId/report'),
+      headers: _jsonHeaders,
+      body: jsonEncode({'reason': reason}),
+    );
+    if (response.statusCode != 204) {
+      throw ApiException(response.statusCode, _detail(response).toString());
+    }
+  }
+
   Future<Uint8List> sightingPhoto(String sightingId) =>
       _photo('$baseUrl/sightings/$sightingId/photo');
 

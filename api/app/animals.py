@@ -73,7 +73,7 @@ def animal_photo(
     _animal(session, animal_id)
     key = session.scalar(
         select(Sighting.photo_key)
-        .where(Sighting.animal_id == animal_id)
+        .where(Sighting.animal_id == animal_id, Sighting.hidden.is_(False))
         .order_by(Sighting.created_at)
         .limit(1)
     )

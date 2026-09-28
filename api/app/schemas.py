@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.breeds import BREEDS
@@ -97,6 +97,8 @@ def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalC
         select(Sighting.id, Sighting.created_at, Sighting.user_id, User.nickname)
         .join(User, User.id == Sighting.user_id)
         .where(Sighting.animal_id == animal.id)
+        # Reported photos disappear from the chronicle, except for their author.
+        .where(or_(Sighting.hidden.is_(False), Sighting.user_id == user_id))
         .order_by(Sighting.created_at)
     ).all()
     return AnimalCard(

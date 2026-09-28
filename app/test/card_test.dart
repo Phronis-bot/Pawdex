@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -53,6 +54,49 @@ void main() {
     expect(find.text('Calico cats are almost always female.'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('by you'), 200, scrollable: page);
     expect(find.text('by Sleepy Mango'), findsOneWidget);
+  });
+
+  testWidgets('someone else\'s chronicle photo can be reported, your own cannot', (tester) async {
+    Object? reported;
+    final api = ApiClient(
+      baseUrl: 'http://api',
+      userId: 'u',
+      client: MockClient((request) async {
+        if (request.url.path == '/animals/mo') return jsonResponse(cardJson());
+        if (request.url.path == '/sightings/s1/report') {
+          reported = jsonDecode(request.body);
+          return http.Response('', 204);
+        }
+        return http.Response('', 404);
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: AnimalCardScreen(api: api, animalId: 'mo')));
+    await tester.pumpAndSettle();
+    final page = find.byType(Scrollable).first;
+
+    Finder tile(String by) => find.ancestor(of: find.text(by), matching: find.byType(InkWell));
+    Future<void> open(String by) async {
+      await tester.scrollUntilVisible(find.text(by), 200, scrollable: page);
+      await tester.ensureVisible(tile(by));
+      await tester.pumpAndSettle();
+      await tester.tap(tile(by));
+      await tester.pumpAndSettle();
+    }
+
+    await open('by you');
+    expect(find.text('Your photo'), findsOneWidget);
+    expect(find.text('Report photo'), findsNothing);
+    Navigator.of(tester.element(find.text('Your photo'))).pop();
+    await tester.pumpAndSettle();
+
+    await open('by Sleepy Mango');
+    await tester.tap(find.text('Report photo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('A person can be recognised'));
+    await tester.pumpAndSettle();
+
+    expect(reported, {'reason': 'person_visible'});
+    expect(find.text("Thanks! We'll take a look."), findsOneWidget);
   });
 
   testWidgets('card screen shows the breed block only when there is a breed', (tester) async {

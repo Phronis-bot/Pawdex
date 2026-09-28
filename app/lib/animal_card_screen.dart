@@ -94,7 +94,10 @@ class _CardBody extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(card.discoveredByMe ? 'Discovered by you' : 'Discovered by ${card.discoveredBy}'),
-        Text('Seen $seen ${seen == 1 ? 'time' : 'times'} · first on ${_date(card.chronicle.first.createdAt)}'),
+        Text([
+          'Seen $seen ${seen == 1 ? 'time' : 'times'}',
+          if (card.chronicle.isNotEmpty) 'first on ${_date(card.chronicle.first.createdAt)}',
+        ].join(' · ')),
         const SizedBox(height: 16),
         switch (card.breed) {
           final breed? => _InfoCard(
@@ -140,19 +143,27 @@ class _CardBody extends StatelessWidget {
           childAspectRatio: 0.75,
           children: [
             for (final entry in card.chronicle.reversed)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ApiPhoto(load: () => api.sightingPhoto(entry.sightingId)),
+              InkWell(
+                onTap: () => showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  showDragHandle: true,
+                  builder: (_) => _PhotoSheet(api: api, entry: entry),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ApiPhoto(load: () => api.sightingPhoto(entry.sightingId)),
+                      ),
                     ),
-                  ),
-                  Text(_date(entry.createdAt), style: text.bodySmall),
-                  Text(entry.byMe ? 'by you' : 'by ${entry.by}',
-                      style: text.bodySmall, overflow: TextOverflow.ellipsis),
-                ],
+                    Text(_date(entry.createdAt), style: text.bodySmall),
+                    Text(entry.byMe ? 'by you' : 'by ${entry.by}',
+                        style: text.bodySmall, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
               ),
           ],
         ),
@@ -162,6 +173,73 @@ class _CardBody extends StatelessWidget {
 
   static String _date(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+}
+
+const _reportReasons = {
+  'person_visible': 'A person can be recognised',
+  'reveals_location': 'It shows exactly where the animal lives',
+  'not_an_animal': "It's not an animal",
+  'inappropriate': 'Offensive or inappropriate',
+  'other': 'Something else',
+};
+
+/// A chronicle photo, bigger, with a way to report it if it's someone else's.
+class _PhotoSheet extends StatelessWidget {
+  const _PhotoSheet({required this.api, required this.entry});
+
+  final ApiClient api;
+  final ChronicleEntry entry;
+
+  Future<void> _report(BuildContext context) async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text("What's wrong with this photo?"),
+        children: [
+          for (final MapEntry(:key, :value) in _reportReasons.entries)
+            SimpleDialogOption(onPressed: () => Navigator.pop(context, key), child: Text(value)),
+        ],
+      ),
+    );
+    if (reason == null || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    try {
+      await api.reportSighting(entry.sightingId, reason);
+      messenger.showSnackBar(const SnackBar(content: Text('Thanks! We\'ll take a look.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not send the report: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.5),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: ApiPhoto(load: () => api.sightingPhoto(entry.sightingId), radius: 16),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(entry.byMe ? 'Your photo' : 'Photo by ${entry.by}'),
+            if (!entry.byMe)
+              TextButton.icon(
+                onPressed: () => _report(context),
+                icon: const Icon(Icons.flag_outlined),
+                label: const Text('Report photo'),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _InfoCard extends StatelessWidget {
