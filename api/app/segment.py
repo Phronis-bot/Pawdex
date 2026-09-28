@@ -85,9 +85,27 @@ def reid_model_name(embedder) -> str:
 
 
 def blur_background(image: Image.Image, region: AnimalRegion) -> Image.Image:
-    """Everything except the animal is blurred, so the photo gives away less about the place."""
+    """Everything except the animal is blurred, so the photo gives away less about the place.
+
+    Both the mask and the blur are computed on small copies and scaled back up: a blurred
+    background looks the same either way, and it's many times faster on big photos.
+    """
     # Grow the outline a little and soften its edge so fur isn't cut off harshly.
-    grow = max(3, int(max(image.size) * 0.01)) | 1  # odd kernel size
-    keep = region.mask.filter(ImageFilter.MaxFilter(grow)).filter(ImageFilter.GaussianBlur(grow / 2))
-    blurred = image.filter(ImageFilter.GaussianBlur(settings.blur_radius_fraction * max(image.size)))
+    small = region.mask.copy()
+    small.thumbnail((MASK_WORK_SIDE, MASK_WORK_SIDE))
+    grow = max(1, round(max(small.size) * 0.01))
+    keep = (
+        small.filter(ImageFilter.MaxFilter(2 * grow + 1))
+        .filter(ImageFilter.GaussianBlur(grow))
+        .resize(image.size, Image.Resampling.BILINEAR)
+    )
+
+    shrink = 4
+    low = image.resize((max(1, image.width // shrink), max(1, image.height // shrink)), Image.Resampling.BILINEAR)
+    radius = settings.blur_radius_fraction * max(low.size)
+    blurred = low.filter(ImageFilter.GaussianBlur(radius)).resize(image.size, Image.Resampling.BILINEAR)
     return Image.composite(image, blurred, keep)
+
+
+# Resolution at which the animal's outline is grown and feathered for blurring.
+MASK_WORK_SIDE = 320

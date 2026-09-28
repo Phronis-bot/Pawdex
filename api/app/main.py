@@ -1,4 +1,6 @@
+import threading
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,8 +17,17 @@ from app.map import router as map_router
 from app.models import User
 from app.reports import router as reports_router
 from app.sightings import router as sightings_router
+from app.warmup import main as warmup
 
-app = FastAPI(title="Pawdex API", version="0.5.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if settings.preload_models:
+        # In the background, so /health answers while the models load.
+        threading.Thread(target=warmup, name="preload-models", daemon=True).start()
+    yield
+
+
+app = FastAPI(title="Pawdex API", version="0.5.0", lifespan=lifespan)
 app.include_router(sightings_router)
 app.include_router(reports_router)
 app.include_router(animals_router)

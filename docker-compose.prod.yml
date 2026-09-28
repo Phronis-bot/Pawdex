@@ -24,6 +24,7 @@ services:
       PAWDEX_DATABASE_URL: postgresql+psycopg://pawdex:${POSTGRES_PASSWORD}@db:5432/pawdex
       # The app talks to the API directly; browsers never need to.
       PAWDEX_CORS_ORIGINS: https://${PAWDEX_DOMAIN}
+      PAWDEX_PRELOAD_MODELS: "true"
     # No --reload in production. --proxy-headers so upload limits see the player's real IP
     # (from Caddy's X-Forwarded-For), not Caddy's; the API port is not published anywhere else.
     command: >

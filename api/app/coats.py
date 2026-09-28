@@ -6,12 +6,12 @@ handled separately (app/breeds.py) and only when the model is confident.
 """
 import enum
 from dataclasses import dataclass
+from functools import lru_cache
 
-import torch
 from PIL import Image
 
 from app.breeds import detect_breed
-from app.classifier import get_classifier
+from app.classifier import ZeroShot, get_classifier
 from app.models import Animal, Species
 
 
@@ -191,16 +191,16 @@ COATS: dict[Species, dict[str, Coat]] = {
 }
 
 
-@torch.inference_mode()
+@lru_cache
+def _coat_zero_shot(species: Species) -> ZeroShot:
+    clip = get_classifier()
+    return ZeroShot(clip.model, clip.processor, [coat.prompt for coat in COATS[species].values()])
+
+
 def detect_coat(image: Image.Image, species: Species) -> str:
     """The most likely coat key for this species."""
-    clip = get_classifier()
-    keys = list(COATS[species])
-    inputs = clip.processor(
-        text=[COATS[species][k].prompt for k in keys], images=image, return_tensors="pt", padding=True
-    )
-    probs = clip.model(**inputs).logits_per_image.softmax(dim=-1)[0]
-    return keys[int(probs.argmax())]
+    probs = _coat_zero_shot(species).probs(image)
+    return list(COATS[species])[max(range(len(probs)), key=probs.__getitem__)]
 
 
 def new_animal(image: Image.Image, species: Species, discoverer_id) -> Animal:

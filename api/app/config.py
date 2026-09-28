@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # Minimum probability of the winning cat/dog group to accept the photo as an animal.
     min_animal_confidence: float = 0.5
 
+    # Load every model when the API starts (production), instead of on the first photo.
+    preload_models: bool = False
+
     # Abuse protection.
     uploads_per_user_per_hour: int = 30
     uploads_per_ip_per_hour: int = 100

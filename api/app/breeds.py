@@ -14,7 +14,7 @@ import torch
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
-from app.classifier import get_classifier
+from app.classifier import ZeroShot, get_classifier
 from app.config import settings
 from app.models import Species
 
@@ -855,16 +855,26 @@ def _breed_clip() -> tuple[CLIPModel, CLIPProcessor]:
     )
 
 
-@torch.inference_mode()
+def _detectable(species: Species) -> list[str]:
+    return [k for k, b in BREEDS[species].items() if b.detectable]
+
+
+@lru_cache
+def _breed_zero_shot(species: Species) -> ZeroShot:
+    model, processor = _breed_clip()
+    prompts = [
+        f"a photo of a {BREEDS[species][k].prompt_name or BREEDS[species][k].label}, a type of {species.value}."
+        for k in _detectable(species)
+    ]
+    return ZeroShot(model, processor, prompts + MIXED_PROMPTS[species])
+
+
 def breed_scores(image: Image.Image, species: Species) -> tuple[list[tuple[str, float]], float]:
     """Detectable breeds ranked by probability, and the total probability of "mixed breed"."""
-    model, processor = _breed_clip()
-    breeds = {k: b for k, b in BREEDS[species].items() if b.detectable}
-    prompts = [f"a photo of a {b.prompt_name or b.label}, a type of {species.value}." for b in breeds.values()]
-    inputs = processor(text=prompts + MIXED_PROMPTS[species], images=image, return_tensors="pt", padding=True)
-    probs = model(**inputs).logits_per_image.softmax(dim=-1)[0].tolist()
-    ranked = sorted(zip(breeds, probs[: len(breeds)]), key=lambda kv: kv[1], reverse=True)
-    return ranked, sum(probs[len(breeds):])
+    keys = _detectable(species)
+    probs = _breed_zero_shot(species).probs(image)
+    ranked = sorted(zip(keys, probs[: len(keys)]), key=lambda kv: kv[1], reverse=True)
+    return ranked, sum(probs[len(keys):])
 
 
 def detect_breed(image: Image.Image, species: Species) -> str | None:

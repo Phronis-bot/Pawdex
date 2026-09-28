@@ -34,18 +34,38 @@ class Classification:
     scores: dict[str, float]
 
 
+class ZeroShot:
+    """CLIP zero-shot over a fixed list of prompts.
+
+    The prompts never change, so their embeddings are computed once here; each photo
+    then only needs the image encoder. Same maths as CLIPModel's forward pass.
+    """
+
+    @torch.inference_mode()
+    def __init__(self, model: CLIPModel, processor: CLIPProcessor, prompts: list[str]):
+        self.model, self.processor = model, processor
+        text = model.get_text_features(**processor(text=prompts, return_tensors="pt", padding=True))
+        self.text = text / text.norm(dim=-1, keepdim=True)
+        self.scale = model.logit_scale.exp()
+
+    @torch.inference_mode()
+    def probs(self, image: Image.Image) -> list[float]:
+        pixels = self.processor(images=image, return_tensors="pt")
+        features = self.model.get_image_features(**pixels)
+        features = features / features.norm(dim=-1, keepdim=True)
+        return (self.scale * features @ self.text.T).softmax(dim=-1)[0].tolist()
+
+
 class ClipClassifier:
     def __init__(self, model_name: str, min_confidence: float):
         self.model = CLIPModel.from_pretrained(model_name).eval()
         self.processor = CLIPProcessor.from_pretrained(model_name)
         self.min_confidence = min_confidence
         self.groups = [group for group, prompts in PROMPTS.items() for _ in prompts]
-        self.prompts = [p for prompts in PROMPTS.values() for p in prompts]
+        self.zero_shot = ZeroShot(self.model, self.processor, [p for ps in PROMPTS.values() for p in ps])
 
-    @torch.inference_mode()
     def classify(self, image: Image.Image) -> Classification:
-        inputs = self.processor(text=self.prompts, images=image, return_tensors="pt", padding=True)
-        probs = self.model(**inputs).logits_per_image.softmax(dim=-1)[0].tolist()
+        probs = self.zero_shot.probs(image)
 
         scores = dict.fromkeys(PROMPTS, 0.0)
         for group, p in zip(self.groups, probs):
