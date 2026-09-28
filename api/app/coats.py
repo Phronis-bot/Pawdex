@@ -83,6 +83,14 @@ COATS: dict[Species, dict[str, Coat]] = {
                 "The same dilution gene turns ginger into soft cream.",
             ),
         ),
+        "chocolate": Coat(
+            "Chocolate", "a photo of a solid chocolate brown cat", Rarity.rare, (
+                "True chocolate brown is rare in cats: it needs two copies of a recessive gene, which is "
+                "why you seldom see it outside pedigree breeds.",
+                "The same brown gene, diluted, gives the soft lilac (lavender) colour.",
+                "The old Thai Tamra Maew poems already describe a solid brown cat, the 'Suphalak'.",
+            ),
+        ),
         "white": Coat(
             "White", "a photo of a solid white cat", Rarity.rare, (
                 "White cats with blue eyes are often deaf: the gene for white fur also affects the inner ear.",

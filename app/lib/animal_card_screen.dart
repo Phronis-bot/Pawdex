@@ -125,9 +125,8 @@ class _CardBody extends StatelessWidget {
               title: 'Breed unknown',
               children: [
                 Text(
-                  "We couldn't tell a breed from this photo. Most street "
-                  '${speciesWord(animal.species)}s in the world have no pedigree — '
-                  'which makes every one of them one of a kind.',
+                  "We couldn't recognise the breed from this photo. It may be a mix, or a breed "
+                  "our model doesn't know yet.",
                 ),
               ],
             ),

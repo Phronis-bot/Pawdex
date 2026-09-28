@@ -64,6 +64,32 @@ BREEDS: dict[Species, dict[str, Breed]] = {
                 "Their points darken with age and in cold weather: the pigment enzyme only works in cooler skin.",
             ),
         ),
+        "oriental_shorthair": Breed(
+            "Oriental Shorthair", "United Kingdom · Thailand (roots)",
+            "A Siamese in any colour: in the 1950s–60s British breeders crossed Siamese with other "
+            "shorthairs to keep the Siamese body and personality without the colour points. Today it "
+            "comes in hundreds of colours and patterns.",
+            "The Siamese is its closest relative — same build, but only in pointed colours. The Havana "
+            "Brown shares its chocolate coat; the Oriental Longhair is its long-haired version.",
+            (
+                "Huge ears and a long wedge-shaped head make it one of the most striking cats.",
+                "Like the Siamese, it's famously talkative and sociable.",
+            ),
+        ),
+        "havana_brown": Breed(
+            "Havana Brown", "United Kingdom · USA",
+            "Solid brown cats already appear in the old Thai Tamra Maew poems. The modern breed was "
+            "developed in Britain in the 1950s from Siamese and black shorthair crosses; the name "
+            "probably comes from the colour of Havana cigars.",
+            "Close to a chocolate Oriental Shorthair, but with a rounder muzzle and a more moderate build.",
+            (
+                "Even its whiskers are brown.",
+                "It's one of the rarest pedigree breeds, with few kittens registered each year.",
+            ),
+            # A solid brown cat with no other tell: a black street cat in dim light
+            # (Gladstone) "looked like" a Havana.
+            detectable=False,
+        ),
         "khao_manee": Breed(
             "Khao Manee", "Thailand",
             "An all-white cat kept in Thailand for centuries and described in the Tamra Maew. Its name "
