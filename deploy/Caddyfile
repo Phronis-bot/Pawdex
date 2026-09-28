@@ -1,5 +1,7 @@
 {$PAWDEX_DOMAIN} {
 	encode gzip
+	# Access log (docker compose logs caddy), to see what clients like the Mini App request.
+	log
 	# Photos are up to 15 MB; leave a little headroom for the multipart envelope.
 	request_body {
 		max_size 20MB

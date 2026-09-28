@@ -12,7 +12,9 @@ $ErrorActionPreference = "Continue"
 if ($Web) {
     # The Telegram Mini App: the same Flutter app built for the web, served at /play/.
     Push-Location app
-    flutter build web --release --base-href /play/
+    # --no-web-resources-cdn: serve CanvasKit from our server, not Google's CDN, so the
+    # Mini App doesn't depend on an extra slow (or blocked) download on phones.
+    flutter build web --release --base-href /play/ --no-web-resources-cdn
     $built = $LASTEXITCODE
     Pop-Location
     if ($built -ne 0) { throw "flutter build web failed" }
