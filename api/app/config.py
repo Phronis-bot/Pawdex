@@ -54,7 +54,9 @@ class Settings(BaseSettings):
     # On the eval set no two different animals scored above 0.67.
     match_confident: float = 0.70
     # Between this and match_confident we ask the player; below it the animal is new.
-    match_uncertain: float = 0.45
+    # Was 0.45: on real player photos different cats scored 0.48-0.55 and were offered as
+    # "Have you met before?" candidates, while the same cat scored 0.79-0.85.
+    match_uncertain: float = 0.58
     match_max_candidates: int = 3
 
     # Breeds use a larger CLIP (~1.7 GB): the base one confused street cats with breeds.
