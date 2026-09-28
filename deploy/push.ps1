@@ -23,7 +23,9 @@ if ($Web) {
     scp -q $webTar "${User}@${Server}:/tmp/pawdex-web.tar"
     if ($LASTEXITCODE -ne 0) { throw "web upload failed" }
     Remove-Item $webTar
-    ssh "${User}@${Server}" "rm -rf /opt/pawdex/web && mkdir -p /opt/pawdex/web && tar -xf /tmp/pawdex-web.tar -C /opt/pawdex/web && rm /tmp/pawdex-web.tar"
+    # Empty the folder rather than deleting it: Caddy's bind mount points at this exact
+    # directory, and a re-created one would stay invisible to it (the Mini App got 404s).
+    ssh "${User}@${Server}" "mkdir -p /opt/pawdex/web && find /opt/pawdex/web -mindepth 1 -delete && tar -xf /tmp/pawdex-web.tar -C /opt/pawdex/web && rm /tmp/pawdex-web.tar"
     if ($LASTEXITCODE -ne 0) { throw "web unpack failed" }
 }
 
