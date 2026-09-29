@@ -123,8 +123,10 @@ def eval_titles() -> set[str]:
 
 def collect(species: str, key: str, label: str, categories: list[str], per_breed: int, skip: set[str], manifest) -> int:
     folder = OUT / species / key
-    if folder.exists() and len(list(folder.glob("*.jpg"))) >= min(per_breed, 10):
-        return len(list(folder.glob("*.jpg")))  # already done (resume)
+    # Resume: skip breeds finished earlier (".done"), or collected by a run before that
+    # marker existed, so a restart doesn't re-download them.
+    if (folder / ".done").exists() or (folder.exists() and len(list(folder.glob("*.jpg"))) >= min(per_breed, 10)):
+        return len(list(folder.glob("*.jpg")))
     folder.mkdir(parents=True, exist_ok=True)
     titles = []
     for cat in categories:
@@ -135,7 +137,7 @@ def collect(species: str, key: str, label: str, categories: list[str], per_breed
         if saved >= per_breed:
             break
         try:
-            time.sleep(0.3)
+            time.sleep(1.0)  # at 0.3 s upload.wikimedia.org answered 429 every few files
             (folder / f"{saved:02d}.jpg").write_bytes(get(info["url"]))
         except Exception as e:  # noqa: BLE001 - one bad file shouldn't stop the run
             print(f"   skip {info['title']}: {e}", flush=True)
@@ -143,6 +145,7 @@ def collect(species: str, key: str, label: str, categories: list[str], per_breed
         manifest.write(f"{species}\t{key}\t{label}\t{saved:02d}.jpg\t{info['title']}\t{info['license']}\t{info['artist']}\n")
         manifest.flush()
         saved += 1
+    (folder / ".done").touch()
     return saved
 
 
