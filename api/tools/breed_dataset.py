@@ -34,6 +34,16 @@ MIXED_CATEGORIES = {
     "cat": ["Mixed-breed cats", "Stray cats", "Feral cats", "Cats in Istanbul", "Tabby cats"],
     "dog": ["Mixed-breed dogs", "Stray dogs", "Street dogs", "Village dogs", "Pariah dogs"],
 }
+# Non-pedigree cats by coat, each collected into its own "mixed-..." folder so the "mixed"
+# class covers every common coat. Blue, colourpoint and black ones matter most: without
+# them the head called street cats Russian Blue, Siamese or Bombay.
+MIXED_BY_COAT = {
+    "cat": ["Domestic short-haired cats", "Blue domestic short-haired cats",
+            "Colourpoint domestic short-haired cats", "Black domestic short-haired cats",
+            "Red tabby domestic short-haired cats", "Black tabby domestic short-haired cats",
+            "Black and white domestic short-haired cats"],
+    "dog": [],
+}
 
 
 def get(url: str, attempts: int = 5) -> bytes:
@@ -161,6 +171,10 @@ def main() -> None:
         n = collect(args.species, "mixed", "Mixed breed", MIXED_CATEGORIES[args.species],
                     args.per_breed * 3, skip, manifest)
         print(f"mixed: {n}", flush=True)
+        for category in MIXED_BY_COAT[args.species]:
+            key = "mixed-" + category.lower().replace(" ", "-")
+            n = collect(args.species, key, "Mixed breed", [category], args.per_breed, skip, manifest)
+            print(f"{key}: {n}", flush=True)
         for qid, label, category in breeds(args.species):
             n = collect(args.species, qid, label, [category], args.per_breed, skip, manifest)
             print(f"{qid} {label}: {n}", flush=True)

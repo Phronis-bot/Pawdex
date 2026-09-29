@@ -23,6 +23,21 @@ from app.segment import crop_to_animal, find_animal
 DATA = Path("/data/breed_train")
 HEADS = Path(__file__).parent.parent / "app" / "breed_heads"
 MIN_PHOTOS = 12  # classes with fewer usable photos are left out
+# Varieties that even owners tell apart by pedigree papers, not looks, are trained as one
+# class (held-out errors were mostly Burmese <-> European Burmese, Persian <-> Traditional).
+SAME_CLASS = {
+    "Q2928528": "Q42573",  # European Burmese -> Burmese
+    "Q2928526": "Q42573",  # American Burmese -> Burmese
+    "Q10666939": "Q42610",  # Chinchilla Persian -> Persian
+    "Q7832303": "Q42610",  # Traditional Persian -> Persian
+    "Q42661": "Q9665",  # Javanese -> Balinese
+}
+
+
+def class_of(folder: str) -> str:
+    if folder.startswith("mixed"):  # "mixed" plus the per-coat "mixed-..." folders
+        return "mixed"
+    return SAME_CLASS.get(folder, folder)
 
 
 @torch.inference_mode()
@@ -54,17 +69,20 @@ def main() -> None:
     cache_path = root / "embeddings.pt"
     cache = torch.load(cache_path) if cache_path.exists() else {}
 
-    classes, x, y = [], [], []
+    by_class: dict[str, list[torch.Tensor]] = {}
     for folder in sorted(p for p in root.iterdir() if p.is_dir()):
-        vectors = embed_folder(species, folder, cache)
+        by_class.setdefault(class_of(folder.name), []).extend(embed_folder(species, folder, cache))
         torch.save(cache, cache_path)
+
+    classes, x, y = [], [], []
+    for name, vectors in sorted(by_class.items()):
         if len(vectors) < MIN_PHOTOS:
-            print(f"  skip {folder.name}: {len(vectors)} usable photos")
+            print(f"  skip {name}: {len(vectors)} usable photos")
             continue
-        classes.append(folder.name)
+        classes.append(name)
         x += vectors
         y += [len(classes) - 1] * len(vectors)
-        print(f"{folder.name}: {len(vectors)} photos", flush=True)
+        print(f"{name}: {len(vectors)} photos", flush=True)
 
     x, y = torch.stack(x), torch.tensor(y)
     rng = random.Random(0)
