@@ -873,6 +873,24 @@ BREEDS: dict[Species, dict[str, Breed]] = {
 }
 
 
+# Wikidata ids of our breeds: the trained breed head (tools/train_breeds.py) predicts these.
+WIKIDATA: dict[Species, dict[str, str]] = {
+    Species.cat: {
+        "siamese": "Q42604", "oriental_shorthair": "Q42696", "havana_brown": "Q42645",
+        "khao_manee": "Q42700", "korat": "Q42691", "birman": "Q42563", "burmese": "Q42573",
+        "japanese_bobtail": "Q42673", "persian": "Q42610", "turkish_van": "Q42724",
+        "turkish_angora": "Q42720", "aegean": "Q7957", "british_shorthair": "Q29273",
+        "scottish_fold": "Q42636", "russian_blue": "Q42654", "siberian": "Q42630",
+        "neva_masquerade": "Q42599", "kurilian_bobtail": "Q7338", "maine_coon": "Q42659",
+        "american_shorthair": "Q7962", "ragdoll": "Q42688", "sphynx": "Q42712",
+        "bengal": "Q42583", "abyssinian": "Q7955", "egyptian_mau": "Q7295",
+        "norwegian_forest": "Q42667", "exotic_shorthair": "Q42555", "devon_rex": "Q42570",
+        "munchkin": "Q686698", "chartreux": "Q42588",
+    },
+    Species.dog: {},
+}
+
+
 @lru_cache
 def _breed_clip() -> tuple[CLIPModel, CLIPProcessor]:
     """Breeds need a larger CLIP than species/coat: fine details decide between look-alikes."""

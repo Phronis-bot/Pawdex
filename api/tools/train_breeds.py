@@ -34,8 +34,21 @@ SAME_CLASS = {
 }
 
 
+# Breeds bred from local street cats that look exactly like them; their Commons categories
+# are full of ordinary cats too. Trained as "mixed": we never claim them from a photo.
+LOOKS_LIKE_STREET = {
+    "Q20793",  # European Shorthair
+    "Q7962",  # American Shorthair
+    "Q7970",  # Arabian Mau
+    "Q29280",  # Brazilian Shorthair
+    "Q7957",  # Aegean
+    "Q42539",  # Anatoli
+}
+
+
 def class_of(folder: str) -> str:
-    if folder.startswith("mixed"):  # "mixed" plus the per-coat "mixed-..." folders
+    # "mixed", the per-coat "mixed-..." folders and street-looking breeds.
+    if folder.startswith("mixed") or folder in LOOKS_LIKE_STREET:
         return "mixed"
     return SAME_CLASS.get(folder, folder)
 

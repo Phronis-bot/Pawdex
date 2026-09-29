@@ -2,10 +2,14 @@
 
 Usage (inside the api container):
     python -m tools.breed_dataset cat [--per-breed 60]
+    python -m tools.breed_dataset cat --eval     # held-out test set, see below
 
 Writes /data/breed_train/<species>/<Wikidata id>/NN.jpg plus a manifest.tsv with each
 photo's source file, license and author (needed for attribution). Photos that are in
 eval/ are skipped, so evaluation stays independent of training.
+
+--eval writes a test set to /data/breed_eval instead (8 photos per breed), skipping every
+photo already in the training set, to compare breed detectors on breeds eval/ lacks.
 """
 import argparse
 import json
@@ -17,7 +21,8 @@ from pathlib import Path
 
 UA = {"User-Agent": "PawdexDatasetBuilder/0.1 (breed recognition training set)"}
 API = "https://commons.wikimedia.org/w/api.php"
-OUT = Path("/data/breed_train")
+TRAIN = Path("/data/breed_train")
+OUT = TRAIN
 EVAL = Path(__file__).parent.parent / "eval"
 
 BREED_CLASS = {"cat": "Q43577", "dog": "Q39367"}
@@ -131,7 +136,8 @@ def eval_titles() -> set[str]:
     return titles
 
 
-def collect(species: str, key: str, label: str, categories: list[str], per_breed: int, skip: set[str], manifest) -> int:
+def collect(species: str, key: str, label: str, categories: list[str], per_breed: int, skip: set[str], manifest,
+            fetch: int | None = None) -> int:
     folder = OUT / species / key
     # Resume: skip breeds finished earlier (".done"), or collected by a run before that
     # marker existed, so a restart doesn't re-download them.
@@ -140,7 +146,7 @@ def collect(species: str, key: str, label: str, categories: list[str], per_breed
     folder.mkdir(parents=True, exist_ok=True)
     titles = []
     for cat in categories:
-        titles += [t for t in category_files(cat, per_breed) if t.replace("_", " ") not in skip]
+        titles += [t for t in category_files(cat, fetch or per_breed) if t.replace("_", " ") not in skip]
     titles = list(dict.fromkeys(titles))[: per_breed + 20]
     saved = 0
     for info in image_infos(titles):
@@ -163,20 +169,30 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("species", choices=list(BREED_CLASS))
     parser.add_argument("--per-breed", type=int, default=60)
+    parser.add_argument("--eval", action="store_true", help="build the held-out test set")
     args = parser.parse_args()
 
-    OUT.mkdir(parents=True, exist_ok=True)
+    global OUT
     skip = eval_titles()
+    fetch = None
+    if args.eval:
+        OUT, args.per_breed, fetch = Path("/data/breed_eval"), 8, 200
+        for line in (TRAIN / "manifest.tsv").read_text(encoding="utf-8").splitlines():
+            skip.add(line.split("	")[4].replace("_", " "))
+    OUT.mkdir(parents=True, exist_ok=True)
     with open(OUT / "manifest.tsv", "a", encoding="utf-8") as manifest:
         n = collect(args.species, "mixed", "Mixed breed", MIXED_CATEGORIES[args.species],
-                    args.per_breed * 3, skip, manifest)
+                    args.per_breed * 3, skip, manifest, fetch)
         print(f"mixed: {n}", flush=True)
         for category in MIXED_BY_COAT[args.species]:
             key = "mixed-" + category.lower().replace(" ", "-")
-            n = collect(args.species, key, "Mixed breed", [category], args.per_breed, skip, manifest)
+            n = collect(args.species, key, "Mixed breed", [category], args.per_breed, skip, manifest, fetch)
             print(f"{key}: {n}", flush=True)
         for qid, label, category in breeds(args.species):
-            n = collect(args.species, qid, label, [category], args.per_breed, skip, manifest)
+            # The test set only needs breeds the classifier was trained on.
+            if args.eval and len(list((TRAIN / args.species / qid).glob("*.jpg"))) < 12:
+                continue
+            n = collect(args.species, qid, label, [category], args.per_breed, skip, manifest, fetch)
             print(f"{qid} {label}: {n}", flush=True)
 
 
