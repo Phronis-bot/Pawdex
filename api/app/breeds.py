@@ -1,4 +1,5 @@
-"""Breeds: detected with CLIP zero-shot, but only when the model is confident.
+"""Breeds: detected by a classifier trained on Commons photos (cats; see
+tools/train_breeds.py) or CLIP zero-shot (dogs), only when the model is confident.
 
 Most street animals are mixed, so "mixed breed" competes with every breed and wins
 ties. A breed never changes rarity (that is by coat). It is shown on the animal's
@@ -10,6 +11,7 @@ story is folklore rather than documented history.
 import enum
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 
 import torch
 from PIL import Image
@@ -30,8 +32,9 @@ class Breed:
     facts: tuple[str, ...]
     # CLIP prompt name when the label alone is ambiguous.
     prompt_name: str | None = None
-    # False for breeds that look like ordinary street animals (e.g. American Shorthair):
-    # the model can't tell them apart reliably, so we never claim them.
+    # Whether CLIP zero-shot may claim it (species without a trained head, i.e. dogs), and
+    # whether it gets a zero-shot prompt. False for breeds zero-shot confused with street
+    # animals, and for breeds only the trained head knows. With a head, the head decides.
     detectable: bool = True
 
 
@@ -390,6 +393,307 @@ BREEDS: dict[Species, dict[str, Breed]] = {
             (
                 "President Charles de Gaulle is said to have owned one.",
                 "Its woolly coat is slightly water-repellent.",
+            ),
+            detectable=False,
+        ),
+        # Recognised only by the trained breed head (tools/train_breeds.py), so they have no
+        # zero-shot prompt (detectable=False).
+        "cornish_rex": Breed(
+            "Cornish Rex", "United Kingdom (England)",
+            "Began with Kallibunker, a curly-coated kitten born on a farm in Cornwall in 1950.",
+            "Looks like the Devon Rex, but its curls come from a different gene; the German Rex "
+            "carries the same gene as the Cornish.",
+            (
+                "Its coat has only the soft undercoat, without the usual guard hairs, so it feels like suede.",
+                "Its arched back and long legs earned it the nickname 'the greyhound of cats'.",
+            ),
+            detectable=False,
+        ),
+        "donskoy": Breed(
+            "Donskoy (Don Sphynx)", "Russia",
+            "Began in Rostov-on-Don in 1987, when Elena Kovaleva rescued a kitten from boys "
+            "teasing it; the kitten, Varvara, later lost her hair and passed it on to her kittens.",
+            "Looks like the Canadian Sphynx, but its hairlessness comes from a different, "
+            "dominant gene. The Peterbald descends from it.",
+            (
+                "Some Donskoy kittens are born bald; others lose their coat as they grow.",
+                "Hairless cats feel warm to the touch and need protection from sun and cold.",
+            ),
+            detectable=False,
+        ),
+        "peterbald": Breed(
+            "Peterbald", "Russia",
+            "Bred in St Petersburg in 1994 by crossing a Donskoy with an Oriental Shorthair.",
+            "A slender, Oriental-shaped cousin of the Donskoy; also mistaken for the Sphynx.",
+            (
+                "Its coat ranges from completely bald to short 'brush', and can change with age.",
+                "It has the long legs, big ears and wedge-shaped head of Oriental cats.",
+            ),
+            detectable=False,
+        ),
+        "bombay": Breed(
+            "Bombay", "USA",
+            "Created in Kentucky in the 1950s by Nikki Horner, who crossed sable Burmese with black "
+            "American Shorthairs to get a 'miniature panther'.",
+            "Easily taken for an ordinary black cat — look for copper or gold eyes, a rounded head "
+            "and a glossy, close-lying coat. Related to the Burmese.",
+            (
+                "Named after the Indian city of Bombay (Mumbai), a nod to the black leopards of India.",
+                "Its short coat has a shine often compared to patent leather.",
+            ),
+            detectable=False,
+        ),
+        "burmilla": Breed(
+            "Burmilla", "United Kingdom",
+            "Began by accident in 1981, when a Chinchilla Persian and a lilac Burmese in the same "
+            "household had kittens.",
+            "Part Burmese, part Chinchilla Persian; the founding breed of the British 'Asian' group.",
+            (
+                "Its silver coat is tipped with colour, and its eyes look outlined with 'eyeliner'.",
+                "There is also a semi-longhaired version, the Tiffanie.",
+            ),
+            detectable=False,
+        ),
+        "british_longhair": Breed(
+            "British Longhair", "United Kingdom",
+            "Long-haired kittens appeared in British Shorthair lines after they were crossed with "
+            "Persians in the 20th century; breeders later kept them as a breed of their own.",
+            "The long-haired sister of the British Shorthair; also resembles the Persian, but with "
+            "a less flat face.",
+            (
+                "It has the British Shorthair's round face and sturdy body under a plush, half-long coat.",
+                "Not every cat registry recognises it yet.",
+            ),
+            detectable=False,
+        ),
+        "oriental_longhair": Breed(
+            "Oriental Longhair", "United Kingdom and USA",
+            "Bred from Oriental Shorthairs crossed with long-haired cats; in Britain it was once "
+            "called the British Angora.",
+            "The long-haired Oriental Shorthair; like a Balinese, but in solid colours and patterns "
+            "rather than colourpoint.",
+            (
+                "Its fine coat has little undercoat, so it lies close to the body.",
+                "It comes in hundreds of colours and patterns.",
+            ),
+            detectable=False,
+        ),
+        "balinese": Breed(
+            "Balinese", "USA",
+            "Long-haired kittens occasionally appeared in Siamese litters; American breeders "
+            "developed them from the 1950s. The name refers to the grace of Balinese dancers — "
+            "the cats have nothing to do with Bali.",
+            "The long-haired Siamese; some registries call its non-traditional colours 'Javanese'.",
+            (
+                "Its silky coat has no woolly undercoat, so it sheds less than it looks like it would.",
+                "Like the Siamese, it is very talkative.",
+            ),
+            detectable=False,
+        ),
+        "thai": Breed(
+            "Thai", "Thailand",
+            "The old-style Siamese: when show Siamese were bred ever slimmer, some breeders kept "
+            "the original rounder type, recognised in Europe as the Thai in 1990.",
+            "Looks like the Siamese but with a rounder head and body — often called the "
+            "'traditional' or 'apple-head' Siamese.",
+            (
+                "Pointed cats like it appear in the old Thai 'Cat Book Poems' manuscripts, as the Wichianmat.",
+                "Its blue eyes and dark points come from the same gene as the Siamese.",
+            ),
+            detectable=False,
+        ),
+        "tonkinese": Breed(
+            "Tonkinese", "Canada and USA",
+            "Developed in the 1960s by crossing the Siamese with the Burmese.",
+            "Halfway between its parents: a Siamese-like face with a Burmese body.",
+            (
+                "Its 'mink' coat shows points that blend softly into the body colour.",
+                "Mink-coated Tonkinese often have striking aqua-coloured eyes.",
+            ),
+            detectable=False,
+        ),
+        "himalayan": Breed(
+            "Himalayan", "USA and United Kingdom",
+            "Bred from the 1930s by crossing Persians with Siamese, to get a Persian with "
+            "colourpoint markings.",
+            "A Persian in Siamese colours; in Britain it is called the Colourpoint Persian, and "
+            "some registries count it as a Persian variety.",
+            (
+                "Named after the Himalayan rabbit, which has the same colourpoint pattern.",
+                "It has the Persian's long coat and flat face, with blue eyes.",
+            ),
+            detectable=False,
+        ),
+        "snowshoe": Breed(
+            "Snowshoe", "USA",
+            "Began in Philadelphia in the 1960s, when a Siamese breeder got kittens with white feet "
+            "and crossed them with bicolour American Shorthairs.",
+            "A Siamese-coloured cat with white feet; often confused with the Ragdoll and Birman.",
+            (
+                "Named for its white 'boots'.",
+                "Its pattern is hard to breed exactly, so no two Snowshoes look alike.",
+            ),
+            detectable=False,
+        ),
+        "savannah": Breed(
+            "Savannah", "USA",
+            "Began in 1986, when a male serval — a wild African cat — was crossed with a "
+            "Siamese; the kitten was named Savannah.",
+            "Part serval; looks like a small cheetah. Often confused with the Bengal, which has "
+            "leopard-cat ancestry instead.",
+            (
+                "One of the tallest domestic cats, with very long legs and big ears.",
+                "Early generations are restricted or banned as pets in some countries and US states.",
+            ),
+            detectable=False,
+        ),
+        "chausie": Breed(
+            "Chausie", "USA",
+            "Developed in the 1990s from crosses between domestic cats and the jungle cat, a wild "
+            "cat of Asia and Egypt.",
+            "Its name comes from the jungle cat's Latin name, Felis chaus; it looks like a large "
+            "Abyssinian.",
+            (
+                "Long-legged and athletic, it is one of the larger domestic breeds.",
+                "It comes only in black, silver-tipped black and brown ticked tabby.",
+            ),
+            detectable=False,
+        ),
+        "ocicat": Breed(
+            "Ocicat", "USA",
+            "Began in 1964 in Michigan, when a breeder crossing Abyssinians and Siamese got a "
+            "spotted kitten, Tonga.",
+            "Named after the wild ocelot it resembles, but it has no wild ancestry at all — only "
+            "Abyssinian, Siamese and American Shorthair.",
+            (
+                "Its thumbprint-shaped spots run in rows along its body.",
+                "It is known for being easy to train, even to walk on a lead.",
+            ),
+            detectable=False,
+        ),
+        "toyger": Breed(
+            "Toyger", "USA",
+            "Bred from the late 1980s by Judy Sugden, starting from a Bengal and a striped "
+            "domestic cat, to create a 'toy tiger'.",
+            "A striped relative of the Bengal; a mackerel tabby street cat can look similar, but "
+            "the Toyger's stripes are bolder and branch like a tiger's.",
+            (
+                "Its breeder hoped a tiger-like pet would make people care about wild tigers.",
+                "It has rounded ears and stripes even on its face.",
+            ),
+            detectable=False,
+        ),
+        "pixie_bob": Breed(
+            "Pixie-bob", "USA",
+            "Developed in the 1980s in Washington State from a bob-tailed cat named Pixie.",
+            "Bred to look like a bobcat; legend says it has bobcat ancestry, but genetic tests "
+            "show it is entirely domestic.",
+            (
+                "Many Pixie-bobs are polydactyl — they have extra toes.",
+                "Its short tail and spotted coat give it a wild look.",
+            ),
+            detectable=False,
+        ),
+        "singapura": Breed(
+            "Singapura", "Singapore",
+            "Brought from Singapore to the USA in the 1970s; the exact story of its first cats "
+            "has been disputed.",
+            "Looks like a tiny Abyssinian: the same ticked coat, but in one sepia colour only.",
+            (
+                "One of the smallest cat breeds; adult females often weigh around 2 kg.",
+                "Singapore once used it as a tourism mascot called Kucinta.",
+            ),
+            detectable=False,
+        ),
+        "somali": Breed(
+            "Somali", "USA",
+            "Long-haired kittens were sometimes born to Abyssinians; breeders developed them into "
+            "a breed from the 1960s.",
+            "The long-haired Abyssinian. Named after Somalia, the neighbour of Ethiopia — once "
+            "called Abyssinia.",
+            (
+                "Its bushy tail has earned it the nickname 'fox cat'.",
+                "Each hair has several bands of colour, like the Abyssinian's.",
+            ),
+            detectable=False,
+        ),
+        "asian": Breed(
+            "Asian", "United Kingdom",
+            "A British group of breeds that grew out of the Burmilla in the 1980s, keeping the "
+            "Burmese body in new colours and patterns.",
+            "Burmese-shaped cats in smoke, solid and tabby coats; the Burmilla and the Tiffanie "
+            "belong to the same group.",
+            (
+                "It is recognised mainly by the British cat registry (GCCF).",
+                "It has the Burmese's golden eyes and muscular body.",
+            ),
+            detectable=False,
+        ),
+        "tiffanie": Breed(
+            "Tiffanie", "United Kingdom",
+            "The semi-longhaired member of the British 'Asian' group, from the same Burmese × "
+            "Chinchilla Persian beginnings as the Burmilla.",
+            "A long-haired Burmilla or Asian; not the same as the American Chantilly-Tiffany.",
+            (
+                "Its silky coat ends in a plumed tail.",
+                "It keeps the Burmese's rounded head and golden eyes.",
+            ),
+            detectable=False,
+        ),
+        "nebelung": Breed(
+            "Nebelung", "USA",
+            "Started in the 1980s by Cora Cobb from a long-haired blue cat, Siegfried, and his "
+            "sister Brunhilde.",
+            "A long-haired cat of Russian Blue type; its name echoes the German word for mist "
+            "and the Nibelungenlied epic.",
+            (
+                "Its blue-grey coat is tipped with silver, which gives it a misty shine.",
+                "It has green eyes, like the Russian Blue.",
+            ),
+            detectable=False,
+        ),
+        "manx": Breed(
+            "Manx", "Isle of Man",
+            "Tailless cats have lived on the Isle of Man for centuries; a folk tale says the Manx "
+            "lost its tail when Noah shut the Ark's door on it.",
+            "The Cymric is its long-haired version; other bob-tailed breeds get their short tails "
+            "from different genes.",
+            (
+                "Some Manx have no tail at all ('rumpy'); others have a stub or even a full tail.",
+                "The Manx cat has appeared on Isle of Man coins and stamps.",
+            ),
+            detectable=False,
+        ),
+        "selkirk_rex": Breed(
+            "Selkirk Rex", "USA",
+            "Began in Montana in 1987 with Miss DePesto, a curly-coated kitten born in a shelter.",
+            "Its curls come from a dominant gene, unlike the Cornish and Devon Rex; it is sturdier "
+            "and rounder, closer to a British Shorthair or Persian in build.",
+            (
+                "It comes in short and long coats, both curly — even the whiskers curl.",
+                "Its coat is often compared to a lamb's fleece.",
+            ),
+            detectable=False,
+        ),
+        "american_curl": Breed(
+            "American Curl", "USA",
+            "Began in 1981 with Shulamith, a stray with backward-curling ears, adopted in "
+            "Lakewood, California.",
+            "Its ears curl back, while the Scottish Fold's fold forward.",
+            (
+                "Kittens are born with straight ears that curl within the first days of life.",
+                "The curl comes from a natural mutation, not from crossing other breeds.",
+            ),
+            detectable=False,
+        ),
+        "mekong_bobtail": Breed(
+            "Mekong Bobtail", "Southeast Asia and Russia",
+            "Short-tailed colourpoint cats from Southeast Asia were developed into a breed by "
+            "Russian breeders, and recognised by the WCF in 2004.",
+            "Looks like a Thai (old-style Siamese) with a short, kinked tail.",
+            (
+                "Named after the Mekong River, which runs through the region it comes from.",
+                "Its short tail is made of bent or fused vertebrae — no two are alike.",
             ),
             detectable=False,
         ),
@@ -886,6 +1190,13 @@ WIKIDATA: dict[Species, dict[str, str]] = {
         "bengal": "Q42583", "abyssinian": "Q7955", "egyptian_mau": "Q7295",
         "norwegian_forest": "Q42667", "exotic_shorthair": "Q42555", "devon_rex": "Q42570",
         "munchkin": "Q686698", "chartreux": "Q42588",
+        "cornish_rex": "Q42559", "donskoy": "Q7303", "peterbald": "Q42663", "bombay": "Q42566",
+        "burmilla": "Q29258", "british_longhair": "Q29268", "oriental_longhair": "Q2099338",
+        "balinese": "Q9665", "thai": "Q42732", "tonkinese": "Q42726", "himalayan": "Q42959",
+        "snowshoe": "Q42633", "savannah": "Q42670", "chausie": "Q42546", "ocicat": "Q42685",
+        "toyger": "Q7323", "pixie_bob": "Q42693", "singapura": "Q42679", "somali": "Q42715",
+        "asian": "Q7974", "tiffanie": "Q7986", "nebelung": "Q42647", "manx": "Q42675",
+        "selkirk_rex": "Q42642", "american_curl": "Q7960", "mekong_bobtail": "Q16889346",
     },
     Species.dog: {},
 }
@@ -917,10 +1228,12 @@ def _breed_zero_shot(species: Species) -> ZeroShot:
     return ZeroShot(model, processor, prompts + MIXED_PROMPTS[species])
 
 
-def breed_scores(image: Image.Image, species: Species) -> tuple[list[tuple[str, float]], float]:
+def breed_scores(
+    image: Image.Image, species: Species, features: torch.Tensor | None = None
+) -> tuple[list[tuple[str, float]], float]:
     """Detectable breeds ranked by probability, and the total probability of "mixed breed"."""
     keys = _detectable(species)
-    probs = _breed_zero_shot(species).probs(image)
+    probs = _breed_zero_shot(species).probs(image, features)
     ranked = sorted(zip(keys, probs[: len(keys)]), key=lambda kv: kv[1], reverse=True)
     return ranked, sum(probs[len(keys):])
 
@@ -944,6 +1257,58 @@ def decide_breed(
     return None
 
 
+HEADS = Path(__file__).parent / "breed_heads"
+
+
+@lru_cache
+def _breed_head(species: Species) -> dict | None:
+    """The trained classifier for this species (tools/train_breeds.py), if there is one."""
+    path = HEADS / f"{species.value}.pt"
+    return torch.load(path, weights_only=True) if path.exists() else None
+
+
+# Look-alikes the head splits unreliably (Siamese vs its descendants and relatives): when
+# none of them is likely enough alone but together they are, the card says "Looks like a
+# Siamese". On held-out photos this added 5 right answers and no wrong ones.
+FAMILIES: dict[Species, dict[str, list[str]]] = {
+    Species.cat: {"siamese": ["siamese", "thai", "tonkinese", "balinese", "snowshoe", "mekong_bobtail"]},
+    Species.dog: {},
+}
+
+
+def head_probs(features: torch.Tensor, species: Species) -> dict[str, float]:
+    """Probability per class of the trained head: our breed keys, "mixed", and Wikidata ids of
+    breeds we have no card for (they still help, as a class to pick instead of a look-alike)."""
+    head = _breed_head(species)
+    probs = (features[0] * 10 @ head["weight"].T + head["bias"]).softmax(-1)
+    to_key = {qid: k for k, qid in WIKIDATA[species].items()}
+    return {to_key.get(c, c): float(p) for c, p in zip(head["classes"], probs)}
+
+
+def decide_head_breed(probs: dict[str, float], mixed: float, species: Species) -> tuple[str, Certainty] | None:
+    """The head's verdict; `mixed` is zero-shot's probability of "mixed breed", which vetoes it."""
+    if mixed >= settings.breed_head_mixed_veto:
+        return None
+    key, prob = max(probs.items(), key=lambda kv: kv[1])
+    if key in BREEDS[species]:
+        if prob >= settings.breed_head_confirmed:
+            return key, Certainty.confirmed
+        if prob >= settings.breed_head_likely:
+            return key, Certainty.likely
+    if key == "mixed":
+        return None
+    for name, members in FAMILIES[species].items():
+        if sum(probs.get(m, 0.0) for m in members) >= settings.breed_head_likely:
+            return name, Certainty.likely
+    return None
+
+
+@torch.inference_mode()
 def detect_breed(image: Image.Image, species: Species) -> tuple[str, Certainty] | None:
-    ranked, mixed = breed_scores(image, species)
-    return decide_breed(ranked, mixed, species)
+    """Breed of the animal in `image`, which should be cropped to the animal."""
+    if _breed_head(species) is None:
+        ranked, mixed = breed_scores(image, species)
+        return decide_breed(ranked, mixed, species)
+    features = _breed_zero_shot(species).image_features(image)
+    _, mixed = breed_scores(image, species, features)
+    return decide_head_breed(head_probs(features, species), mixed, species)

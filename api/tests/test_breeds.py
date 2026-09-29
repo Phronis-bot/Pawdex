@@ -4,7 +4,8 @@ from pathlib import Path
 import h3
 import pytest
 
-from app.breeds import BREEDS, MIXED_PROMPTS, Certainty, decide_breed, detect_breed
+from app.breeds import BREEDS, MIXED_PROMPTS, WIKIDATA, Certainty, decide_breed, decide_head_breed, detect_breed
+from app.coats import animal_crop
 from app.config import settings
 from app.models import Species
 from app.photos import load_image
@@ -29,13 +30,14 @@ def test_breed_table_is_complete():
         ("breeds/dog_labrador/2.jpg", Species.dog, "labrador"),
         ("breeds/dog_corgi/1.jpg", Species.dog, "corgi"),
         ("breeds/dog_kangal/1.jpg", Species.dog, "kangal"),
-        ("breeds/cat_siamese/2.jpg", Species.cat, "siamese"),
-        ("breeds/cat_sphynx/2.jpg", Species.cat, "sphynx"),
+        ("breeds/cat_persian/2.jpg", Species.cat, "persian"),
+        ("breeds/cat_sphynx/1.jpg", Species.cat, "sphynx"),
         ("breeds/cat_maine_coon/3.jpg", Species.cat, "maine_coon"),
     ],
 )
 def test_recognises_clear_purebreds(path, species, breed):
-    assert detect_breed(load_image((EVAL / path).read_bytes()), species) == (breed, Certainty.confirmed)
+    image = animal_crop(load_image((EVAL / path).read_bytes()), species)
+    assert detect_breed(image, species) == (breed, Certainty.confirmed)
 
 
 @pytest.mark.parametrize(
@@ -48,7 +50,8 @@ def test_recognises_clear_purebreds(path, species, breed):
     ],
 )
 def test_street_animals_stay_mixed(path, species):
-    assert detect_breed(load_image((EVAL / path).read_bytes()), species) is None
+    image = animal_crop(load_image((EVAL / path).read_bytes()), species)
+    assert detect_breed(image, species) is None
 
 
 def test_breed_is_on_the_card_only(fake_embedder):
@@ -102,3 +105,26 @@ def test_street_dog_card_has_no_breed(fake_embedder):
 )
 def test_three_levels_of_certainty(species, top, mixed, expected):
     assert decide_breed([("siamese", top), ("birman", 0.01)], mixed, species) == expected
+
+
+def test_every_cat_breed_is_known_to_the_head():
+    assert set(WIKIDATA[Species.cat]) == set(BREEDS[Species.cat])
+
+
+@pytest.mark.parametrize(
+    "probs,mixed,expected",
+    [
+        ({"bengal": 0.95, "mixed": 0.05}, 0.0, ("bengal", Certainty.confirmed)),
+        ({"bengal": 0.75, "mixed": 0.25}, 0.0, ("bengal", Certainty.likely)),
+        ({"bengal": 0.60, "mixed": 0.40}, 0.0, None),
+        # Zero-shot thinks it's a street cat: no breed, however sure the head is.
+        ({"bengal": 0.99, "mixed": 0.01}, 0.5, None),
+        ({"mixed": 0.9, "bengal": 0.1}, 0.0, None),
+        # Split between Siamese look-alikes: "Looks like a Siamese".
+        ({"tonkinese": 0.45, "thai": 0.3, "mixed": 0.25}, 0.0, ("siamese", Certainty.likely)),
+        # A breed the head knows but we have no card for is never shown.
+        ({"Q17517549": 0.95, "mixed": 0.05}, 0.0, None),
+    ],
+)
+def test_head_decision(probs, mixed, expected):
+    assert decide_head_breed(probs, mixed, Species.cat) == expected

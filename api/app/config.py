@@ -71,6 +71,15 @@ class Settings(BaseSettings):
     # On the eval set, dogs at 0.4 put no street dog in a breed; cats need 0.6 (at 0.5 a
     # black street cat "looked like" an Exotic Shorthair).
     breed_likely_confidence: dict[str, float] = {"cat": 0.6, "dog": 0.4}
+    # Species with a trained breed head (app/breed_heads/<species>.pt, see
+    # tools/train_breeds.py) use it instead of the thresholds above. Tuned with
+    # eval/breed_head_eval.py on held-out Commons photos: at 0.9 / 0.7 the head named 2.2x
+    # more breeds correctly than zero-shot, with fewer wrong ones.
+    breed_head_confirmed: float = 0.9
+    breed_head_likely: float = 0.7
+    # ...unless zero-shot thinks the animal is this likely to be mixed: the head alone put
+    # 2 of 81 street cats in a breed, with this veto 1 of 81.
+    breed_head_mixed_veto: float = 0.3
 
     # Map. Animals are shown only as H3 hexagon cells, never as points (rule 3: pets
     # get stolen). Resolution 9 hexagons are ~350 m across.

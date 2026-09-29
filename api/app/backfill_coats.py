@@ -12,7 +12,7 @@ import sys
 from sqlalchemy import or_, select
 
 from app.breeds import detect_breed
-from app.coats import COATS, detect_coat
+from app.coats import COATS, animal_crop, detect_coat
 from app.db import SessionLocal
 from app.models import Animal, Sighting
 from app.photos import load_image
@@ -38,7 +38,7 @@ def main() -> None:
             if animal.coat is None or redo_coats:
                 animal.coat = detect_coat(image, animal.species)
                 animal.rarity = COATS[animal.species][animal.coat].rarity.value
-            breed = detect_breed(image, animal.species)
+            breed = detect_breed(animal_crop(image, animal.species), animal.species)
             animal.breed = breed[0] if breed else None
             animal.breed_certainty = breed[1].value if breed else None
             label = f"{animal.breed} ({animal.breed_certainty})" if breed else "unknown"

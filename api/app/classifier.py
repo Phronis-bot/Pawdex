@@ -49,10 +49,16 @@ class ZeroShot:
         self.scale = model.logit_scale.exp()
 
     @torch.inference_mode()
-    def probs(self, image: Image.Image) -> list[float]:
+    def image_features(self, image: Image.Image) -> torch.Tensor:
+        """Unit-length image embedding, shape (1, dim); reusable by other heads on the same model."""
         pixels = self.processor(images=image, return_tensors="pt")
         features = self.model.get_image_features(**pixels)
-        features = features / features.norm(dim=-1, keepdim=True)
+        return features / features.norm(dim=-1, keepdim=True)
+
+    @torch.inference_mode()
+    def probs(self, image: Image.Image, features: torch.Tensor | None = None) -> list[float]:
+        if features is None:
+            features = self.image_features(image)
         return (self.scale * features @ self.text.T).softmax(dim=-1)[0].tolist()
 
 

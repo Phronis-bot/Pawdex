@@ -74,7 +74,7 @@ def create_sighting(
     if outcome is Outcome.match:
         sighting.animal_id = candidates[0].animal.id
     elif outcome is Outcome.new:
-        sighting.animal = new_animal(image, sighting.species, user_id)
+        sighting.animal = new_animal(image, sighting.species, user_id, subject)
     # Outcome.uncertain: stays pending until the player answers via /resolve.
     session.commit()
     return sighting_result(session, sighting, outcome, candidates, user_id)

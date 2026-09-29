@@ -13,6 +13,7 @@ from PIL import Image
 from app.breeds import detect_breed
 from app.classifier import ZeroShot, get_classifier
 from app.models import Animal, Species
+from app.segment import crop_to_animal, find_animal
 
 
 class Rarity(str, enum.Enum):
@@ -211,10 +212,19 @@ def detect_coat(image: Image.Image, species: Species) -> str:
     return list(COATS[species])[max(range(len(probs)), key=probs.__getitem__)]
 
 
-def new_animal(image: Image.Image, species: Species, discoverer_id) -> Animal:
-    """A freshly discovered animal; coat, rarity and breed come from the discovering photo."""
+def animal_crop(image: Image.Image, species: Species) -> Image.Image:
+    region = find_animal(image, species)
+    return crop_to_animal(image, region) if region else image
+
+
+def new_animal(image: Image.Image, species: Species, discoverer_id, subject: Image.Image | None = None) -> Animal:
+    """A freshly discovered animal; coat, rarity and breed come from the discovering photo.
+
+    `subject` is the animal cropped out of it (app.segment.prepare_photo), found here if not
+    given: the breed classifier was trained on cropped animals.
+    """
     coat = detect_coat(image, species)
-    breed = detect_breed(image, species)
+    breed = detect_breed(subject or animal_crop(image, species), species)
     return Animal(
         species=species,
         discoverer_id=discoverer_id,
