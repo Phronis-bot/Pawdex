@@ -130,6 +130,16 @@ void main() {
     expect(find.text('Looks like a Siamese · from Thailand'), findsOneWidget);
     expect(find.textContaining('Our best guess from the photo'), findsOneWidget);
 
+    await open(cardJson(breed: {...siamese, 'certain': false, 'certainty': 'maybe', 'also': 'Akita'}));
+    expect(find.text('Cat · Maybe a Siamese or an Akita · Calico'), findsOneWidget);
+    expect(find.text('Maybe a Siamese or an Akita'), findsOneWidget);
+    expect(find.textContaining('Only a guess'), findsOneWidget);
+    expect(find.text('About the Siamese · from Thailand'), findsOneWidget);
+
+    await open({...cardJson(), 'breed_mixed': true});
+    expect(find.text('Cat · Mixed breed · Calico'), findsOneWidget);
+    expect(find.text('Probably a mixed breed'), findsOneWidget);
+
     await open(cardJson());
     expect(find.textContaining('from Thailand'), findsNothing);
     expect(find.text('Breed unknown'), findsOneWidget);

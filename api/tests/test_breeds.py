@@ -4,7 +4,7 @@ from pathlib import Path
 import h3
 import pytest
 
-from app.breeds import BREEDS, MIXED_PROMPTS, WIKIDATA, Certainty, decide_breed, decide_head_breed, detect_breed
+from app.breeds import BREEDS, MIXED_PROMPTS, WIKIDATA, Certainty, Verdict, decide_breed, decide_head_breed, detect_breed
 from app.coats import animal_crop
 from app.config import settings
 from app.models import Species
@@ -37,7 +37,7 @@ def test_breed_table_is_complete():
 )
 def test_recognises_clear_purebreds(path, species, breed):
     image = animal_crop(load_image((EVAL / path).read_bytes()), species)
-    assert detect_breed(image, species) == (breed, Certainty.confirmed)
+    assert detect_breed(image, species) == Verdict(breed, Certainty.confirmed)
 
 
 @pytest.mark.parametrize(
@@ -51,7 +51,8 @@ def test_recognises_clear_purebreds(path, species, breed):
 )
 def test_street_animals_stay_mixed(path, species):
     image = animal_crop(load_image((EVAL / path).read_bytes()), species)
-    assert detect_breed(image, species) is None
+    # Dogs (zero-shot) say nothing; cats (trained head) say "probably mixed".
+    assert detect_breed(image, species) in (None, Verdict(None, Certainty.mixed))
 
 
 def test_breed_is_on_the_card_only(fake_embedder):
@@ -114,17 +115,45 @@ def test_every_cat_breed_is_known_to_the_head():
 @pytest.mark.parametrize(
     "probs,mixed,expected",
     [
-        ({"bengal": 0.95, "mixed": 0.05}, 0.0, ("bengal", Certainty.confirmed)),
-        ({"bengal": 0.75, "mixed": 0.25}, 0.0, ("bengal", Certainty.likely)),
-        ({"bengal": 0.60, "mixed": 0.40}, 0.0, None),
-        # Zero-shot thinks it's a street cat: no breed, however sure the head is.
-        ({"bengal": 0.99, "mixed": 0.01}, 0.5, None),
-        ({"mixed": 0.9, "bengal": 0.1}, 0.0, None),
+        ({"bengal": 0.95, "mixed": 0.05}, 0.0, Verdict("bengal", Certainty.confirmed)),
+        ({"bengal": 0.75, "mixed": 0.25}, 0.0, Verdict("bengal", Certainty.likely)),
+        # Unsure between two: both are offered as guesses; a weak third one is not.
+        ({"birman": 0.5, "himalayan": 0.3, "ragdoll": 0.1, "mixed": 0.1}, 0.0,
+         Verdict("birman", Certainty.maybe, "himalayan")),
+        ({"bengal": 0.6, "mixed": 0.4}, 0.0, Verdict("bengal", Certainty.maybe)),
+        # Zero-shot thinks it's a street cat: mixed, however sure the head is.
+        ({"bengal": 0.99, "mixed": 0.01}, 0.5, Verdict(None, Certainty.mixed)),
+        ({"mixed": 0.9, "bengal": 0.1}, 0.0, Verdict(None, Certainty.mixed)),
         # Split between Siamese look-alikes: "Looks like a Siamese".
-        ({"tonkinese": 0.45, "thai": 0.3, "mixed": 0.25}, 0.0, ("siamese", Certainty.likely)),
+        ({"tonkinese": 0.45, "thai": 0.3, "mixed": 0.25}, 0.0, Verdict("siamese", Certainty.likely)),
         # A breed the head knows but we have no card for is never shown.
         ({"Q17517549": 0.95, "mixed": 0.05}, 0.0, None),
     ],
 )
 def test_head_decision(probs, mixed, expected):
     assert decide_head_breed(probs, mixed, Species.cat) == expected
+
+
+def test_card_words_a_guess_and_a_mix(fake_embedder):
+    from app.db import SessionLocal
+    from app.models import Animal
+
+    player = new_user()
+    lat, lon = fresh_spot()
+    fake_embedder.queue.append(BASE_VECTOR)
+    animal_id = post_photo(player, fixture("cat_1.jpg"), lat, lon).json()["animal"]["id"]
+
+    def card_after(**fields):
+        with SessionLocal() as session:
+            animal = session.get(Animal, animal_id)
+            for name, value in fields.items():
+                setattr(animal, name, value)
+                session.commit()
+        return client.get(f"/animals/{animal_id}", headers=player).json()
+
+    card = card_after(breed="birman", breed_certainty="maybe", breed_alt="himalayan")
+    assert (card["breed"]["name"], card["breed"]["certainty"], card["breed"]["also"]) == ("Birman", "maybe", "Himalayan")
+    assert card["breed"]["certain"] is False and card["breed_mixed"] is False
+
+    card = card_after(breed=None, breed_certainty="mixed", breed_alt=None)
+    assert card["breed"] is None and card["breed_mixed"] is True

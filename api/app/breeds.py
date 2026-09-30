@@ -12,6 +12,7 @@ import enum
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import NamedTuple
 
 import torch
 from PIL import Image
@@ -1241,6 +1242,16 @@ def breed_scores(
 class Certainty(str, enum.Enum):
     confirmed = "confirmed"  # "Siamese"
     likely = "likely"  # "Looks like a Siamese"
+    maybe = "maybe"  # "Maybe a Birman or a Himalayan": a guess, clearly worded as one
+    mixed = "mixed"  # "Probably a mixed breed": no breed key
+
+
+class Verdict(NamedTuple):
+    """What the card says about the breed. `key` is None for mixed; `alt` is the second
+    guess of a "maybe"."""
+    key: str | None
+    certainty: Certainty
+    alt: str | None = None
 
 
 def decide_breed(
@@ -1285,30 +1296,33 @@ def head_probs(features: torch.Tensor, species: Species) -> dict[str, float]:
     return {to_key.get(c, c): float(p) for c, p in zip(head["classes"], probs)}
 
 
-def decide_head_breed(probs: dict[str, float], mixed: float, species: Species) -> tuple[str, Certainty] | None:
-    """The head's verdict; `mixed` is zero-shot's probability of "mixed breed", which vetoes it."""
-    if mixed >= settings.breed_head_mixed_veto:
-        return None
+def decide_head_breed(probs: dict[str, float], mixed: float, species: Species) -> Verdict | None:
+    """The head's verdict, or None for "breed unknown". `mixed` is zero-shot's probability of
+    "mixed breed": above the veto the animal is called mixed, however sure the head is."""
     key, prob = max(probs.items(), key=lambda kv: kv[1])
+    if mixed >= settings.breed_head_mixed_veto or key == "mixed":
+        return Verdict(None, Certainty.mixed)
     if key in BREEDS[species]:
         if prob >= settings.breed_head_confirmed:
-            return key, Certainty.confirmed
+            return Verdict(key, Certainty.confirmed)
         if prob >= settings.breed_head_likely:
-            return key, Certainty.likely
-    if key == "mixed":
-        return None
+            return Verdict(key, Certainty.likely)
     for name, members in FAMILIES[species].items():
         if sum(probs.get(m, 0.0) for m in members) >= settings.breed_head_likely:
-            return name, Certainty.likely
-    return None
+            return Verdict(name, Certainty.likely)
+    # Not sure, but not clueless: name the best one or two guesses, worded as guesses.
+    guesses = [k for k, p in sorted(probs.items(), key=lambda kv: -kv[1])
+               if k in BREEDS[species] and p >= settings.breed_head_maybe][:2]
+    return Verdict(guesses[0], Certainty.maybe, *guesses[1:]) if guesses else None
 
 
 @torch.inference_mode()
-def detect_breed(image: Image.Image, species: Species) -> tuple[str, Certainty] | None:
+def detect_breed(image: Image.Image, species: Species) -> Verdict | None:
     """Breed of the animal in `image`, which should be cropped to the animal."""
     if _breed_head(species) is None:
         ranked, mixed = breed_scores(image, species)
-        return decide_breed(ranked, mixed, species)
+        claim = decide_breed(ranked, mixed, species)
+        return Verdict(*claim) if claim else None
     features = _breed_zero_shot(species).image_features(image)
     _, mixed = breed_scores(image, species, features)
     return decide_head_breed(head_probs(features, species), mixed, species)

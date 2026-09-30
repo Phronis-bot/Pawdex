@@ -40,6 +40,10 @@ class BreedOut(BaseModel):
     name: str
     # False means "looks like": the photo matches this breed best, but not surely enough.
     certain: bool
+    # "confirmed" ("Siamese"), "likely" ("Looks like a Siamese") or "maybe" ("Maybe a
+    # Siamese or a Thai": a guess; `also` is the second breed's name, if there is one).
+    certainty: str
+    also: str | None = None
     origin: str
     history: str
     relatives: str
@@ -53,6 +57,8 @@ class AnimalCard(AnimalOut):
     coat_facts: list[str]
     # Only on the card, never in map/zone/candidate responses.
     breed: BreedOut | None
+    # True: no breed, because it's probably a mixed breed (rather than unknown).
+    breed_mixed: bool = False
     # Oldest first; photos via GET /sightings/{sighting_id}/photo.
     chronicle: list[ChronicleEntry]
 
@@ -95,6 +101,7 @@ def animal_out(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalOu
 def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalCard:
     coat = COATS[animal.species].get(animal.coat) if animal.coat else None
     breed = BREEDS[animal.species].get(animal.breed) if animal.breed else None
+    also = BREEDS[animal.species].get(animal.breed_alt) if animal.breed_alt else None
     entries = session.execute(
         select(Sighting.id, Sighting.created_at, Sighting.user_id, User.nickname)
         .join(User, User.id == Sighting.user_id)
@@ -112,11 +119,14 @@ def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalC
         breed=BreedOut(
             name=breed.label,
             certain=animal.breed_certainty == Certainty.confirmed.value,
+            certainty=animal.breed_certainty or Certainty.confirmed.value,
+            also=also.label if also else None,
             origin=breed.origin,
             history=breed.history,
             relatives=breed.relatives,
             facts=list(breed.facts),
         ) if breed else None,
+        breed_mixed=animal.breed_certainty == Certainty.mixed.value,
         chronicle=[
             ChronicleEntry(sighting_id=sid, created_at=at, by=nickname, by_me=uid == user_id)
             for sid, at, uid, nickname in entries

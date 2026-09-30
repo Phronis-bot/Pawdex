@@ -40,11 +40,14 @@ class Animal(Base):
     # Key into app.coats.COATS, detected from the discovering photo; sets the rarity.
     coat: Mapped[str | None] = mapped_column(String(30))
     rarity: Mapped[str | None] = mapped_column(String(20))
-    # Key into app.breeds.BREEDS, only when the model was confident; null = mixed breed.
+    # Key into app.breeds.BREEDS; null = mixed breed or unknown (see breed_certainty).
     # Shown on the card only, never on the map (purebreds are the ones that get stolen).
     breed: Mapped[str | None] = mapped_column(String(40))
-    # "confirmed" ("Siamese") or "likely" ("Looks like a Siamese"); null when breed is null.
+    # app.breeds.Certainty: "confirmed", "likely", "maybe" (a guess, see breed_alt) or
+    # "mixed" (breed is null); null = breed unknown.
     breed_certainty: Mapped[str | None] = mapped_column(String(10))
+    # Second guess of a "maybe" ("Maybe a Birman or a Himalayan").
+    breed_alt: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     discoverer: Mapped[User] = relationship()

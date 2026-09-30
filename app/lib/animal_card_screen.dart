@@ -87,7 +87,7 @@ class _CardBody extends StatelessWidget {
         Text(
           [
             speciesLabel(animal.species),
-            card.breed?.title ?? 'Breed unknown',
+            card.breedTitle,
             if (card.coat != null) card.coat!,
           ].join(' · '),
           style: text.titleMedium,
@@ -102,15 +102,22 @@ class _CardBody extends StatelessWidget {
         switch (card.breed) {
           final breed? => _InfoCard(
               icon: Icons.public,
-              title: '${breed.title} · from ${breed.origin}',
+              title: breed.isGuess ? breed.title : '${breed.title} · from ${breed.origin}',
               children: [
                 if (!breed.certain) ...[
                   Text(
-                    'Our best guess from the photo, not a certainty — '
-                    'it could also be a mix with ${breed.withArticle} look.',
+                    breed.isGuess
+                        ? "Only a guess: one photo isn't enough to tell look-alike breeds apart, "
+                            'and it could be a mix.'
+                        : 'Our best guess from the photo, not a certainty — '
+                            'it could also be a mix with ${breed.withArticle} look.',
                     style: text.bodySmall?.copyWith(fontStyle: FontStyle.italic),
                   ),
                   const SizedBox(height: 8),
+                ],
+                if (breed.isGuess) ...[
+                  Text('About the ${breed.name} · from ${breed.origin}', style: text.titleSmall),
+                  const SizedBox(height: 4),
                 ],
                 Text(breed.history),
                 const SizedBox(height: 12),
@@ -118,6 +125,16 @@ class _CardBody extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(breed.relatives),
                 for (final fact in breed.facts) _Bullet(fact),
+              ],
+            ),
+          null when card.breedMixed => const _InfoCard(
+              icon: Icons.pets,
+              title: 'Probably a mixed breed',
+              children: [
+                Text(
+                  'We see no particular breed here. Most cats and dogs in the world are mixes: '
+                  'only a small share belong to a pedigree breed.',
+                ),
               ],
             ),
           null => const _InfoCard(

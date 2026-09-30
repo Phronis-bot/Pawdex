@@ -88,6 +88,8 @@ class BreedInfo {
   BreedInfo({
     required this.name,
     required this.certain,
+    required this.certainty,
+    required this.also,
     required this.origin,
     required this.history,
     required this.relatives,
@@ -97,6 +99,9 @@ class BreedInfo {
   factory BreedInfo.fromJson(Map<String, dynamic> json) => BreedInfo(
         name: json['name'] as String,
         certain: json['certain'] as bool,
+        // Older servers only send `certain`.
+        certainty: json['certainty'] as String? ?? (json['certain'] as bool ? 'confirmed' : 'likely'),
+        also: json['also'] as String?,
         origin: json['origin'] as String,
         history: json['history'] as String,
         relatives: json['relatives'] as String,
@@ -107,14 +112,26 @@ class BreedInfo {
 
   /// False: "looks like" - the photo matches this breed best, but not surely enough.
   final bool certain;
+
+  /// "confirmed", "likely" ("looks like") or "maybe" (a guess, possibly with [also]).
+  final String certainty;
+
+  /// The second guess of a "maybe".
+  final String? also;
+  bool get isGuess => certainty == 'maybe';
   final String origin;
   final String history;
 
   /// "a Siamese", "an Akita".
-  String get withArticle => '${'AEIOU'.contains(name[0]) ? 'an' : 'a'} $name';
+  String get withArticle => _withArticle(name);
+  static String _withArticle(String name) => '${'AEIOU'.contains(name[0]) ? 'an' : 'a'} $name';
 
-  /// "Siamese" or "Looks like a Siamese".
-  String get title => certain ? name : 'Looks like $withArticle';
+  /// "Siamese", "Looks like a Siamese" or "Maybe a Birman or a Himalayan".
+  String get title => switch (certainty) {
+        'confirmed' => name,
+        'maybe' => 'Maybe $withArticle${also == null ? '' : ' or ${_withArticle(also!)}'}',
+        _ => 'Looks like $withArticle',
+      };
 
   /// Relatives and look-alikes.
   final String relatives;
@@ -130,6 +147,7 @@ class AnimalCard {
     required this.coat,
     required this.coatFacts,
     required this.breed,
+    required this.breedMixed,
     required this.chronicle,
   });
 
@@ -140,6 +158,7 @@ class AnimalCard {
         coat: json['coat'] as String?,
         coatFacts: (json['coat_facts'] as List).cast<String>(),
         breed: json['breed'] == null ? null : BreedInfo.fromJson(json['breed'] as Map<String, dynamic>),
+        breedMixed: json['breed_mixed'] as bool? ?? false,
         chronicle: (json['chronicle'] as List)
             .map((e) => ChronicleEntry.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -151,8 +170,14 @@ class AnimalCard {
   final String? coat;
   final List<String> coatFacts;
 
-  /// Only when the server was confident; null for mixed breed.
+  /// Null when the breed is unknown or the animal is probably mixed ([breedMixed]).
   final BreedInfo? breed;
+
+  /// No breed because it's probably a mixed breed, rather than unknown.
+  final bool breedMixed;
+
+  /// "Siamese", "Looks like a Siamese", "Mixed breed", "Breed unknown"...
+  String get breedTitle => breed?.title ?? (breedMixed ? 'Mixed breed' : 'Breed unknown');
 
   /// Oldest first.
   final List<ChronicleEntry> chronicle;

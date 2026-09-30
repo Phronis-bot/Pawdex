@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     # ...unless zero-shot thinks the animal is this likely to be mixed: the head alone put
     # 2 of 81 street cats in a breed, with this veto 1 of 81.
     breed_head_mixed_veto: float = 0.3
+    # Below "likely", breeds with at least this probability are offered as guesses
+    # ("Maybe a Birman or a Himalayan") instead of a bare "Breed unknown".
+    breed_head_maybe: float = 0.15
 
     # Map. Animals are shown only as H3 hexagon cells, never as points (rule 3: pets
     # get stolen). Resolution 9 hexagons are ~350 m across.

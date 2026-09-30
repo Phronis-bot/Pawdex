@@ -136,7 +136,7 @@ class ShareCard extends StatelessWidget {
             ].join(' · '),
             style: white.copyWith(fontSize: 16),
           ),
-          if (card.breed case final breed?)
+          if (card.breed case final breed? when !breed.isGuess)
             Text('from ${breed.origin}', style: white.copyWith(fontSize: 13)),
           const SizedBox(height: 10),
           Text('Seen $seen ${seen == 1 ? 'time' : 'times'} · discovered by ${card.discoveredBy}',

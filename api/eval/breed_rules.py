@@ -5,7 +5,7 @@ Usage (inside the api container):  python -m eval.breed_rules
 """
 import torch
 
-from app.breeds import FAMILIES, WIKIDATA, _breed_zero_shot, breed_scores, decide_breed, decide_head_breed, head_probs
+from app.breeds import FAMILIES, Certainty, WIKIDATA, _breed_zero_shot, breed_scores, decide_breed, decide_head_breed, head_probs
 from app.models import Species
 
 CAT = Species.cat
@@ -23,22 +23,23 @@ def main():
         print(f"\n### {set_name}: {sum(e != 'mixed' for _, e, _, _ in mine)} purebred, "
               f"{sum(e == 'mixed' for _, e, _, _ in mine)} street")
         for label, rule in rules.items():
-            right = {"confirmed": 0, "likely": 0}
-            wrong = {"confirmed": 0, "likely": 0}
-            street = []
+            tally: dict[str, int] = {}
             for _, expected, name, f in mine:
                 claim = rule(f[None])
+                kind = "street" if expected == "mixed" else "pure"
                 if not claim:
-                    continue
-                key, certainty = claim
-                if expected == "mixed":
-                    street.append(f"{name}->{key}")
-                    continue
-                family = FAMILIES[CAT].get(key, [key]) if certainty.value == "likely" else [key]
-                (right if KEY.get(expected) in family else wrong)[certainty.value] += 1
-            print(f"  {label:18s} confirmed right/wrong {right['confirmed']}/{wrong['confirmed']}, "
-                  f"'looks like' right/wrong {right['likely']}/{wrong['likely']}, "
-                  f"street as breed {len(street)} {street[:3]}")
+                    out = "unknown"
+                elif claim[1] is Certainty.mixed:
+                    out = "mixed"
+                elif kind == "street":
+                    out = claim[1].value
+                else:
+                    options = [claim[0], *claim[2:]] if claim[1] is not Certainty.likely else FAMILIES[CAT].get(claim[0], [claim[0]])
+                    out = f"{claim[1].value} {'right' if KEY.get(expected) in options else 'wrong'}"
+                tally[f"{kind}: {out}"] = tally.get(f"{kind}: {out}", 0) + 1
+            print(f"  {label}")
+            for k, n in sorted(tally.items()):
+                print(f"      {k:28s} {n}")
 
 
 if __name__ == "__main__":

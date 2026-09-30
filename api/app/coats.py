@@ -230,6 +230,7 @@ def new_animal(image: Image.Image, species: Species, discoverer_id, subject: Ima
         discoverer_id=discoverer_id,
         coat=coat,
         rarity=COATS[species][coat].rarity.value,
-        breed=breed[0] if breed else None,
-        breed_certainty=breed[1].value if breed else None,
+        breed=breed.key if breed else None,
+        breed_certainty=breed.certainty.value if breed else None,
+        breed_alt=breed.alt if breed else None,
     )
