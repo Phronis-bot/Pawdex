@@ -51,8 +51,10 @@ class Settings(BaseSettings):
     # A new photo is only compared with animals of the same species seen within this radius.
     match_radius_m: float = 300
     # Cosine similarity at or above which we say "It's Mo!" without asking.
-    # On the eval set no two different animals scored above 0.67.
-    match_confident: float = 0.70
+    # Was 0.70 (no two different animals on the eval set scored above 0.67), but players got
+    # two different colourpoint cats merged automatically; the same cat scored 0.79-0.85.
+    # Below this the player is asked, which never misleads.
+    match_confident: float = 0.80
     # Between this and match_confident we ask the player; below it the animal is new.
     # Was 0.45: on real player photos different cats scored 0.48-0.55 and were offered as
     # "Have you met before?" candidates, while the same cat scored 0.79-0.85.

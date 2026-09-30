@@ -8,6 +8,8 @@ extension type _WebApp._(JSObject _) implements JSObject {
   external String get initData;
   external void ready();
   external void expand();
+  external bool isVersionAtLeast(String version);
+  external void disableVerticalSwipes();
   @JS('LocationManager')
   external _LocationManager? get locationManager;
 }
@@ -34,6 +36,9 @@ String? telegramInitData() {
   webApp
     ..ready()
     ..expand(); // use the full screen height inside Telegram
+  // Otherwise a swipe on a list drags the whole Mini App down instead of scrolling
+  // (Bot API 7.7+; older Telegram has no such method).
+  if (webApp.isVersionAtLeast('7.7')) webApp.disableVerticalSwipes();
   return data;
 }
 
