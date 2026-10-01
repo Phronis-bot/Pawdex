@@ -35,7 +35,7 @@ class Coat:
 COATS: dict[Species, dict[str, Coat]] = {
     Species.cat: {
         "tabby": Coat(
-            "Tabby", "a photo of a striped tabby cat", Rarity.common, (
+            "Tabby", "a photo of a tabby cat with stripes or spots", Rarity.common, (
                 "The striped tabby coat is the oldest cat pattern: the African wildcat, ancestor of "
                 "every house cat, wears it too.",
                 "Almost every tabby has a letter 'M' drawn on its forehead.",
