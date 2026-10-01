@@ -10,6 +10,7 @@ from app.breeds import BREEDS, Certainty
 from app.coats import COATS, Rarity
 from app.matching import Candidate, Outcome
 from app.models import Animal, Sighting, Species, User
+from app.street import street
 
 
 class AnimalRef(BaseModel):
@@ -50,15 +51,32 @@ class BreedOut(BaseModel):
     facts: list[str]
 
 
+class CoatOption(BaseModel):
+    key: str
+    label: str
+
+
+class StreetOut(BaseModel):
+    name: str  # "Chó cỏ · local street dog", "Local street cat"
+    facts: list[str]
+
+
 class AnimalCard(AnimalOut):
     discovered_by: str  # discoverer's nickname
     discovered_by_me: bool
+    # Null when the model wasn't sure and nobody picked one (no coat facts then either).
     coat: str | None
+    coat_key: str | None = None
     coat_facts: list[str]
+    coat_by_player: bool = False
+    # Only for the discoverer: the coats they may pick from ("Wrong coat? Pick yours").
+    coat_options: list[CoatOption] = []
     # Only on the card, never in map/zone/candidate responses.
     breed: BreedOut | None
     # True: no breed, because it's probably a mixed breed (rather than unknown).
     breed_mixed: bool = False
+    # When there is no breed (mixed or unknown): the local street-animal name and facts.
+    street: StreetOut | None = None
     # Oldest first; photos via GET /sightings/{sighting_id}/photo.
     chronicle: list[ChronicleEntry]
 
@@ -102,6 +120,7 @@ def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalC
     coat = COATS[animal.species].get(animal.coat) if animal.coat else None
     breed = BREEDS[animal.species].get(animal.breed) if animal.breed else None
     also = BREEDS[animal.species].get(animal.breed_alt) if animal.breed_alt else None
+    local = street(animal.species, animal.country)
     entries = session.execute(
         select(Sighting.id, Sighting.created_at, Sighting.user_id, User.nickname)
         .join(User, User.id == Sighting.user_id)
@@ -115,7 +134,11 @@ def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalC
         discovered_by=animal.discoverer.nickname,
         discovered_by_me=animal.discoverer_id == user_id,
         coat=coat.label if coat else None,
+        coat_key=animal.coat if coat else None,
         coat_facts=list(coat.facts) if coat else [],
+        coat_by_player=animal.coat_by_player,
+        coat_options=[CoatOption(key=k, label=c.label) for k, c in COATS[animal.species].items()]
+        if animal.discoverer_id == user_id else [],
         breed=BreedOut(
             name=breed.label,
             certain=animal.breed_certainty == Certainty.confirmed.value,
@@ -127,6 +150,7 @@ def animal_card(session: Session, animal: Animal, user_id: uuid.UUID) -> AnimalC
             facts=list(breed.facts),
         ) if breed else None,
         breed_mixed=animal.breed_certainty == Certainty.mixed.value,
+        street=StreetOut(name=local.name, facts=list(local.facts)) if not breed else None,
         chronicle=[
             ChronicleEntry(sighting_id=sid, created_at=at, by=nickname, by_me=uid == user_id)
             for sid, at, uid, nickname in entries

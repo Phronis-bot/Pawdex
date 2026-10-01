@@ -2,15 +2,16 @@ import uuid
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, Response
-from geoalchemy2 import WKTElement
+from geoalchemy2 import Geometry, WKTElement
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import cast, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.auth import current_user_id
 from app.classifier import ClipClassifier, get_classifier
 from app.coats import new_animal
 from app.config import settings
+from app.countries import country_at
 from app.db import get_session
 from app.embedder import Embedder, get_embedder
 from app.matching import Outcome, decide, find_candidates
@@ -74,7 +75,7 @@ def create_sighting(
     if outcome is Outcome.match:
         sighting.animal_id = candidates[0].animal.id
     elif outcome is Outcome.new:
-        sighting.animal = new_animal(image, sighting.species, user_id, subject)
+        sighting.animal = new_animal(image, sighting.species, user_id, subject, country_at(latitude, longitude))
     # Outcome.uncertain: stays pending until the player answers via /resolve.
     session.commit()
     return sighting_result(session, sighting, outcome, candidates, user_id)
@@ -137,7 +138,7 @@ def resolve_sighting(
 
     if body.animal_id is None:
         image = load_image(storage.read(sighting.photo_key))
-        sighting.animal = new_animal(image, sighting.species, user_id)
+        sighting.animal = new_animal(image, sighting.species, user_id, country=sighting_country(session, sighting))
         outcome = Outcome.new
     else:
         # Only animals we actually offered: no linking to arbitrary animals elsewhere.
@@ -163,3 +164,11 @@ def sighting_photo(
     if sighting is None or (not public and sighting.user_id != user_id):
         raise HTTPException(status_code=404, detail="Sighting not found")
     return Response(content=storage.read(sighting.photo_key), media_type="image/jpeg")
+
+
+def sighting_country(session: Session, sighting: Sighting) -> str | None:
+    point = cast(Sighting.location, Geometry)
+    lat, lon = session.execute(
+        select(func.ST_Y(point), func.ST_X(point)).where(Sighting.id == sighting.id)
+    ).one()
+    return country_at(lat, lon)

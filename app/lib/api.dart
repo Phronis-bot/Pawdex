@@ -138,6 +138,18 @@ class BreedInfo {
   final List<String> facts;
 }
 
+/// "Chó cỏ · local street dog": what an animal of no recognised breed is called where it
+/// was met, with a few facts.
+class StreetInfo {
+  StreetInfo({required this.name, required this.facts});
+
+  factory StreetInfo.fromJson(Map<String, dynamic> json) =>
+      StreetInfo(name: json['name'] as String, facts: (json['facts'] as List).cast<String>());
+
+  final String name;
+  final List<String> facts;
+}
+
 /// Everything on an animal's card. Carries no location.
 class AnimalCard {
   AnimalCard({
@@ -148,6 +160,9 @@ class AnimalCard {
     required this.coatFacts,
     required this.breed,
     required this.breedMixed,
+    this.coatByPlayer = false,
+    this.coatOptions = const [],
+    this.street,
     required this.chronicle,
   });
 
@@ -159,6 +174,12 @@ class AnimalCard {
         coatFacts: (json['coat_facts'] as List).cast<String>(),
         breed: json['breed'] == null ? null : BreedInfo.fromJson(json['breed'] as Map<String, dynamic>),
         breedMixed: json['breed_mixed'] as bool? ?? false,
+        coatByPlayer: json['coat_by_player'] as bool? ?? false,
+        coatOptions: [
+          for (final o in (json['coat_options'] as List?) ?? const [])
+            (key: o['key'] as String, label: o['label'] as String),
+        ],
+        street: json['street'] == null ? null : StreetInfo.fromJson(json['street'] as Map<String, dynamic>),
         chronicle: (json['chronicle'] as List)
             .map((e) => ChronicleEntry.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -176,8 +197,17 @@ class AnimalCard {
   /// No breed because it's probably a mixed breed, rather than unknown.
   final bool breedMixed;
 
-  /// "Siamese", "Looks like a Siamese", "Mixed breed", "Breed unknown"...
-  String get breedTitle => breed?.title ?? (breedMixed ? 'Mixed breed' : 'Breed unknown');
+  /// True once the discoverer picked the coat by hand.
+  final bool coatByPlayer;
+
+  /// Coats the discoverer may pick from ("Wrong coat? Pick yours"); empty for everyone else.
+  final List<({String key, String label})> coatOptions;
+
+  /// The local street-animal name and facts, when there is no breed.
+  final StreetInfo? street;
+
+  /// "Siamese", "Looks like a Siamese", "Chó cỏ · local street dog"...
+  String get breedTitle => breed?.title ?? street?.name ?? (breedMixed ? 'Mixed breed' : 'Breed unknown');
 
   /// Oldest first.
   final List<ChronicleEntry> chronicle;
@@ -390,6 +420,17 @@ class ApiClient {
     );
     _check(response);
     return Animal.fromJson(_json(response) as Map<String, dynamic>);
+  }
+
+  /// The discoverer corrects the coat; returns the updated card.
+  Future<AnimalCard> fixCoat(String animalId, String coat) async {
+    final response = await client.put(
+      Uri.parse('$baseUrl/animals/$animalId/coat'),
+      headers: _jsonHeaders,
+      body: jsonEncode({'coat': coat}),
+    );
+    _check(response);
+    return AnimalCard.fromJson(_json(response) as Map<String, dynamic>);
   }
 
   Future<AnimalCard> animalCard(String animalId) async {

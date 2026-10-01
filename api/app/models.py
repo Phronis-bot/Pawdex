@@ -37,9 +37,15 @@ class Animal(Base):
     # Given once by the discoverer and never changed.
     name: Mapped[str | None] = mapped_column(String(30))
     discoverer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
-    # Key into app.coats.COATS, detected from the discovering photo; sets the rarity.
+    # Key into app.coats.COATS, detected from the discovering photo; sets the rarity. Null
+    # when the model wasn't sure (rarity is then "common").
     coat: Mapped[str | None] = mapped_column(String(30))
     rarity: Mapped[str | None] = mapped_column(String(20))
+    # True once the discoverer picked the coat by hand ("Wrong coat? Pick yours").
+    coat_by_player: Mapped[bool] = mapped_column(default=False, server_default="false")
+    # Country of the first sighting (app/countries.py), for local street-animal names; null
+    # outside the countries we have names for. Never coordinates.
+    country: Mapped[str | None] = mapped_column(String(2))
     # Key into app.breeds.BREEDS; null = mixed breed or unknown (see breed_certainty).
     # Shown on the card only, never on the map (purebreds are the ones that get stolen).
     breed: Mapped[str | None] = mapped_column(String(40))

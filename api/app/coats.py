@@ -8,10 +8,12 @@ import enum
 from dataclasses import dataclass
 from functools import lru_cache
 
+import torch
 from PIL import Image
 
-from app.breeds import detect_breed
-from app.classifier import ZeroShot, get_classifier
+from app.breeds import _breed_clip, detect_breed
+from app.classifier import ZeroShot
+from app.config import settings
 from app.models import Animal, Species
 from app.segment import crop_to_animal, find_animal
 
@@ -131,7 +133,7 @@ COATS: dict[Species, dict[str, Coat]] = {
     },
     Species.dog: {
         "tan": Coat(
-            "Tan", "a photo of a yellow, tan or golden dog", Rarity.common, (
+            "Tan", "a photo of a yellow, tan or reddish dog", Rarity.common, (
                 "Yellow-tan is the most common colour of free-roaming dogs worldwide: it's the coat "
                 "dogs tend to end up with when nobody breeds them for looks.",
                 "Most of the world's dogs — roughly three in four — are free-ranging 'village dogs', "
@@ -139,8 +141,16 @@ COATS: dict[Species, dict[str, Coat]] = {
                 "Tan comes from pheomelanin, the same pigment that makes ginger cats ginger.",
             ),
         ),
+        "cream": Coat(
+            "Cream", "a photo of a pale cream coloured dog", Rarity.common, (
+                "Cream is a pale form of the same red-yellow pigment that makes tan and red dogs.",
+                "Separate genes set how intense that pigment is, so one litter can range from cream "
+                "to deep red.",
+                "Unlike a true albino, a cream dog keeps a dark nose and dark eyes.",
+            ),
+        ),
         "brown": Coat(
-            "Brown", "a photo of a brown dog", Rarity.common, (
+            "Brown", "a photo of a solid brown dog", Rarity.common, (
                 "True brown ('liver') is recessive: a dog needs two copies, which also makes its "
                 "nose brown instead of black.",
                 "Chocolate Labradors get their colour from this same gene.",
@@ -155,13 +165,23 @@ COATS: dict[Species, dict[str, Coat]] = {
                 "Many black dogs have a small white star on the chest — a trace of white-spotting genes.",
             ),
         ),
-        "black_and_white": Coat(
-            "Black and white", "a photo of a black and white dog", Rarity.rare, (
+        "black_and_tan": Coat(
+            "Black and tan",
+            "a photo of a black and tan dog, black with tan markings on the face, chest and legs",
+            Rarity.common, (
+                "The tan always sits in the same places: dots above the eyes, the muzzle, chest, legs "
+                "and under the tail.",
+                "One gene variant draws this pattern, on Rottweilers, Dobermanns and street dogs alike.",
+                "The Black and Tan Coonhound, an American hunting breed, is named after its coat.",
+            ),
+        ),
+        "bicolor": Coat(
+            "Bicolour", "a photo of a two-coloured dog with large white patches", Rarity.common, (
                 "White patches come from spotting genes that stop pigment cells from reaching some "
                 "areas of skin.",
                 "White shows up first on the chest, paws, tail tip and face — the places pigment "
                 "cells reach last.",
-                "Tiny black freckles that appear in the white areas after birth are called 'ticking'.",
+                "Tiny dark freckles that appear in the white areas after birth are called 'ticking'.",
             ),
         ),
         "white": Coat(
@@ -173,20 +193,35 @@ COATS: dict[Species, dict[str, Coat]] = {
             ),
         ),
         "grey": Coat(
-            "Grey", "a photo of a grey dog", Rarity.rare, (
+            "Grey", "a photo of a solid grey dog", Rarity.rare, (
                 "Grey dogs are usually 'dilute' black — the same gene behind the Weimaraner's silver coat.",
                 "Breeders call grey 'blue', as in blue Great Danes and blue Staffies.",
                 "Some grey dogs are born black and turn grey as they grow, thanks to a separate "
                 "'greying' gene.",
             ),
         ),
+        "tricolor": Coat(
+            "Tricolour", "a photo of a tricolor dog with black, tan and white patches", Rarity.rare, (
+                "A tricolour dog is usually black and tan with white patches added: two separate "
+                "genes at work.",
+                "It's the classic colouring of Beagles and Bernese Mountain Dogs.",
+                "The tan keeps to its usual spots — eyebrows, cheeks and legs — while the white can "
+                "appear almost anywhere.",
+            ),
+        ),
         "spotted": Coat(
-            "Spotted", "a photo of a spotted dog", Rarity.rare, (
+            "Spotted", "a photo of a white dog with small black spots, like a dalmatian", Rarity.rare, (
                 "Freckle-like spots on a white coat come from a separate 'ticking' gene that paints "
                 "colour back in.",
                 "Dalmatian puppies are born pure white; their spots appear over the first weeks.",
-                "Marbled 'merle' patches are a different gene altogether — the pattern of many "
-                "Australian Shepherds.",
+                "Ticking can be so dense that a white dog looks grey or roan, as in Australian Cattle Dogs.",
+            ),
+        ),
+        "merle": Coat(
+            "Merle", "a photo of a merle dog with a marbled grey and black coat", Rarity.legendary, (
+                "Merle is a marbled pattern: patches of full colour scattered over a lighter, diluted coat.",
+                "It's the signature coat of Australian Shepherds, Border Collies and Catahoula dogs.",
+                "Breeders never pair two merles: 'double merle' puppies are often deaf or blind.",
             ),
         ),
         "brindle": Coat(
@@ -202,14 +237,26 @@ COATS: dict[Species, dict[str, Coat]] = {
 
 @lru_cache
 def _coat_zero_shot(species: Species) -> ZeroShot:
-    clip = get_classifier()
-    return ZeroShot(clip.model, clip.processor, [coat.prompt for coat in COATS[species].values()])
+    # The large breed CLIP: on the Commons coat test set (eval/coat_eval.py) it beat the base
+    # one, and the photo's features are computed once for both coat and breed.
+    model, processor = _breed_clip()
+    return ZeroShot(model, processor, [coat.prompt for coat in COATS[species].values()])
 
 
-def detect_coat(image: Image.Image, species: Species) -> str:
-    """The most likely coat key for this species."""
-    probs = _coat_zero_shot(species).probs(image)
-    return list(COATS[species])[max(range(len(probs)), key=probs.__getitem__)]
+def detect_coat(image: Image.Image, species: Species, features: torch.Tensor | None = None) -> str | None:
+    """The most likely coat key for this species, or None when the model isn't sure enough:
+    then the card shows no coat and no coat facts, rather than wrong ones. `image` should be
+    cropped to the animal; `features` are its breed-CLIP features, if already computed."""
+    probs = _coat_zero_shot(species).probs(image, features)
+    best = max(range(len(probs)), key=probs.__getitem__)
+    if probs[best] < settings.coat_min_confidence[species.value]:
+        return None
+    return list(COATS[species])[best]
+
+
+def rarity_of(species: Species, coat: str | None) -> str:
+    """Rarity is by coat; an unknown coat counts as an ordinary one."""
+    return (COATS[species][coat].rarity if coat else Rarity.common).value
 
 
 def animal_crop(image: Image.Image, species: Species) -> Image.Image:
@@ -217,19 +264,25 @@ def animal_crop(image: Image.Image, species: Species) -> Image.Image:
     return crop_to_animal(image, region) if region else image
 
 
-def new_animal(image: Image.Image, species: Species, discoverer_id, subject: Image.Image | None = None) -> Animal:
+def new_animal(
+    image: Image.Image, species: Species, discoverer_id, subject: Image.Image | None = None,
+    country: str | None = None,
+) -> Animal:
     """A freshly discovered animal; coat, rarity and breed come from the discovering photo.
 
     `subject` is the animal cropped out of it (app.segment.prepare_photo), found here if not
     given: the breed classifier was trained on cropped animals.
     """
-    coat = detect_coat(image, species)
-    breed = detect_breed(subject or animal_crop(image, species), species)
+    subject = subject or animal_crop(image, species)
+    features = _coat_zero_shot(species).image_features(subject)
+    coat = detect_coat(subject, species, features)
+    breed = detect_breed(subject, species, features)
     return Animal(
         species=species,
         discoverer_id=discoverer_id,
+        country=country,
         coat=coat,
-        rarity=COATS[species][coat].rarity.value,
+        rarity=rarity_of(species, coat),
         breed=breed.key if breed else None,
         breed_certainty=breed.certainty.value if breed else None,
         breed_alt=breed.alt if breed else None,

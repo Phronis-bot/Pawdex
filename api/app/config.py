@@ -86,6 +86,12 @@ class Settings(BaseSettings):
     # ("Maybe a Birman or a Himalayan") instead of a bare "Breed unknown".
     breed_head_maybe: float = 0.15
 
+    # Coats (app/coats.py): below this probability the card shows no coat and no coat facts,
+    # and rarity counts as common. Tuned on the Commons coat test set (eval/coat_prompts.py):
+    # cats at 0.7 showed a coat for 100 of 150 photos, 78 right; dogs at 0.8 for 44 of 180,
+    # 34 right (at 0.7: 72 shown, 25 wrong). The discoverer can pick the coat by hand.
+    coat_min_confidence: dict[str, float] = {"cat": 0.7, "dog": 0.8}
+
     # Map. Animals are shown only as H3 hexagon cells, never as points (rule 3: pets
     # get stolen). Resolution 9 hexagons are ~350 m across.
     map_cell_resolution: int = 9

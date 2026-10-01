@@ -167,4 +167,52 @@ void main() {
     expect(find.text('Cat · Siamese · Calico'), findsOneWidget);
     expect(find.text('from Thailand'), findsOneWidget);
   });
+
+  testWidgets('no breed: the local street-animal card; the discoverer can fix the coat', (tester) async {
+    var json = {
+      ...cardJson(),
+      'discovered_by_me': true,
+      'breed_mixed': true,
+      'street': {
+        'name': 'Chó cỏ · local street dog',
+        'facts': ["In Vietnamese, 'chó cỏ' is the local dog.", 'Most dogs are free-ranging.'],
+      },
+      'coat_options': [
+        {'key': 'calico', 'label': 'Calico'},
+        {'key': 'tortoiseshell', 'label': 'Tortoiseshell'},
+      ],
+    };
+    String? putBody;
+    final api = ApiClient(
+      baseUrl: 'http://api',
+      userId: 'u',
+      client: MockClient((request) async {
+        if (request.method == 'PUT' && request.url.path == '/animals/mo/coat') {
+          putBody = request.body;
+          json = {...json, 'coat': 'Tortoiseshell', 'coat_facts': ['No two torties are alike.']};
+          return jsonResponse(json);
+        }
+        return request.url.path == '/animals/mo' ? jsonResponse(json) : http.Response('', 404);
+      }),
+    );
+    await tester.pumpWidget(MaterialApp(home: AnimalCardScreen(api: api, animalId: 'mo')));
+    await tester.pumpAndSettle();
+    final scrollable = find.byType(Scrollable).first;
+
+    await tester.scrollUntilVisible(find.text('Cat · Chó cỏ · local street dog · Calico'), 200, scrollable: scrollable);
+    await tester.scrollUntilVisible(find.text('Most dogs are free-ranging.'), 200, scrollable: scrollable);
+    expect(find.text('Chó cỏ · local street dog'), findsOneWidget);
+
+    final fix = find.text('Wrong coat? Pick yours');
+    await tester.scrollUntilVisible(fix, 200, scrollable: scrollable);
+    await tester.tap(fix);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tortoiseshell'));
+    await tester.pumpAndSettle();
+
+    expect(putBody, '{"coat":"tortoiseshell"}');
+    await tester.scrollUntilVisible(find.text('No two torties are alike.'), -200, scrollable: scrollable);
+    await tester.scrollUntilVisible(
+        find.text('Cat · Chó cỏ · local street dog · Tortoiseshell'), -200, scrollable: scrollable);
+  });
 }

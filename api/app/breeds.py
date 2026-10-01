@@ -1317,12 +1317,14 @@ def decide_head_breed(probs: dict[str, float], mixed: float, species: Species) -
 
 
 @torch.inference_mode()
-def detect_breed(image: Image.Image, species: Species) -> Verdict | None:
-    """Breed of the animal in `image`, which should be cropped to the animal."""
+def detect_breed(image: Image.Image, species: Species, features: torch.Tensor | None = None) -> Verdict | None:
+    """Breed of the animal in `image`, which should be cropped to the animal; `features` are
+    its breed-CLIP features, if already computed."""
+    if features is None:
+        features = _breed_zero_shot(species).image_features(image)
     if _breed_head(species) is None:
-        ranked, mixed = breed_scores(image, species)
+        ranked, mixed = breed_scores(image, species, features)
         claim = decide_breed(ranked, mixed, species)
         return Verdict(*claim) if claim else None
-    features = _breed_zero_shot(species).image_features(image)
     _, mixed = breed_scores(image, species, features)
     return decide_head_breed(head_probs(features, species), mixed, species)

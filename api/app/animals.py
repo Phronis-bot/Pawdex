@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import current_user_id
+from app.coats import COATS, rarity_of
 from app.db import get_session
 from app.models import Animal, Sighting
 from app.schemas import AnimalCard, AnimalOut, animal_card, animal_out
@@ -80,3 +81,28 @@ def animal_photo(
     if key is None:
         raise HTTPException(status_code=404, detail="No photo yet")
     return Response(content=storage.read(key), media_type="image/jpeg")
+
+
+class CoatIn(BaseModel):
+    coat: str = Field(max_length=30)
+
+
+@router.put("/{animal_id}/coat", response_model=AnimalCard)
+def fix_coat(
+    animal_id: uuid.UUID,
+    body: CoatIn,
+    user_id: uuid.UUID = Depends(current_user_id),
+    session: Session = Depends(get_session),
+):
+    """"Wrong coat? Pick yours": the discoverer corrects the coat; it sets the rarity, like a
+    detected one."""
+    animal = _animal(session, animal_id)
+    if animal.discoverer_id != user_id:
+        raise HTTPException(status_code=403, detail="Only the discoverer can change the coat")
+    if body.coat not in COATS[animal.species]:
+        raise HTTPException(status_code=422, detail="Unknown coat for this species")
+    animal.coat = body.coat
+    animal.rarity = rarity_of(animal.species, body.coat)
+    animal.coat_by_player = True
+    session.commit()
+    return animal_card(session, animal, user_id)

@@ -5,17 +5,19 @@ Usage (inside the api container):  python -m app.backfill_coats [--breeds] [--co
 --breeds re-detects the breed of every animal (e.g. after changing the breed model
 or threshold). Coats are normally only filled where missing, since rarity shouldn't
 change under players' feet; --coats re-detects them too, for fixing detection mistakes
-(e.g. after adding a coat that was missing from the table).
+(e.g. after adding a coat that was missing from the table); coats players picked by hand
+are kept. Every run also fills in the country of discovery.
 """
 import sys
 
 from sqlalchemy import or_, select
 
 from app.breeds import detect_breed
-from app.coats import COATS, animal_crop, detect_coat
+from app.coats import animal_crop, detect_coat, rarity_of
 from app.db import SessionLocal
 from app.models import Animal, Sighting
 from app.photos import load_image
+from app.sightings import sighting_country
 from app.storage import get_storage
 
 
@@ -28,22 +30,20 @@ def main() -> None:
         if not (redo_breeds or redo_coats):
             query = query.where(or_(Animal.coat.is_(None), Animal.breed.is_(None)))
         for animal in session.scalars(query):
-            first_photo = session.scalar(
-                select(Sighting.photo_key)
-                .where(Sighting.animal_id == animal.id)
-                .order_by(Sighting.created_at)
-                .limit(1)
+            first = session.scalar(
+                select(Sighting).where(Sighting.animal_id == animal.id).order_by(Sighting.created_at).limit(1)
             )
-            image = load_image(storage.read(first_photo))
-            if animal.coat is None or redo_coats:
-                animal.coat = detect_coat(image, animal.species)
-                animal.rarity = COATS[animal.species][animal.coat].rarity.value
-            breed = detect_breed(animal_crop(image, animal.species), animal.species)
+            animal.country = sighting_country(session, first)
+            crop = animal_crop(load_image(storage.read(first.photo_key)), animal.species)
+            if (animal.coat is None or redo_coats) and not animal.coat_by_player:
+                animal.coat = detect_coat(crop, animal.species)
+                animal.rarity = rarity_of(animal.species, animal.coat)
+            breed = detect_breed(crop, animal.species)
             animal.breed = breed.key if breed else None
             animal.breed_certainty = breed.certainty.value if breed else None
             animal.breed_alt = breed.alt if breed else None
             label = f"{animal.breed} / {animal.breed_alt} ({animal.breed_certainty})" if breed else "unknown"
-            print(f"{animal.name or animal.id}: {animal.coat} ({animal.rarity}), breed={label}")
+            print(f"{animal.name or animal.id}: {animal.coat} ({animal.rarity}), breed={label}, country={animal.country}")
         session.commit()
 
 

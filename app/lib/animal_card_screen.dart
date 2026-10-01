@@ -24,7 +24,7 @@ class AnimalCardScreen extends StatefulWidget {
 }
 
 class _AnimalCardScreenState extends State<AnimalCardScreen> {
-  late final Future<AnimalCard> _card = widget.api.animalCard(widget.animalId);
+  late Future<AnimalCard> _card = widget.api.animalCard(widget.animalId);
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +50,13 @@ class _AnimalCardScreenState extends State<AnimalCardScreen> {
           body: switch (snapshot) {
             AsyncSnapshot(hasError: true) => Center(child: Text('${snapshot.error}')),
             AsyncSnapshot(hasData: false) => const Center(child: CircularProgressIndicator()),
-            _ => _CardBody(api: widget.api, card: card!),
+            _ => _CardBody(
+                api: widget.api,
+                card: card!,
+                onChanged: (updated) => setState(() {
+                  _card = Future.value(updated);
+                }),
+              ),
           },
         );
       },
@@ -59,10 +65,35 @@ class _AnimalCardScreenState extends State<AnimalCardScreen> {
 }
 
 class _CardBody extends StatelessWidget {
-  const _CardBody({required this.api, required this.card});
+  const _CardBody({required this.api, required this.card, required this.onChanged});
 
   final ApiClient api;
   final AnimalCard card;
+  final ValueChanged<AnimalCard> onChanged;
+
+  Future<void> _pickCoat(BuildContext context) async {
+    final coat = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Pick the coat'),
+        children: [
+          for (final option in card.coatOptions)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, option.key),
+              child: Text(option.label),
+            ),
+        ],
+      ),
+    );
+    if (coat == null || !context.mounted) return;
+    try {
+      onChanged(await api.fixCoat(card.animal.id, coat));
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Couldn't save the coat: $e")));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +158,20 @@ class _CardBody extends StatelessWidget {
                 for (final fact in breed.facts) _Bullet(fact),
               ],
             ),
+          null when card.street != null => _InfoCard(
+              icon: Icons.pets,
+              title: card.street!.name,
+              children: [
+                if (!card.breedMixed) ...[
+                  Text(
+                    "We couldn't recognise a breed from this photo.",
+                    style: text.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                for (final fact in card.street!.facts) _Bullet(fact),
+              ],
+            ),
           null when card.breedMixed => const _InfoCard(
               icon: Icons.pets,
               title: 'Probably a mixed breed',
@@ -156,6 +201,15 @@ class _CardBody extends StatelessWidget {
             children: [for (final fact in card.coatFacts) _Bullet(fact)],
           ),
         ],
+        if (card.coatOptions.isNotEmpty)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              icon: const Icon(Icons.palette_outlined),
+              label: Text(card.coat == null ? 'Pick the coat' : 'Wrong coat? Pick yours'),
+              onPressed: () => _pickCoat(context),
+            ),
+          ),
         const SizedBox(height: 16),
         Text('Chronicle', style: text.titleLarge),
         const SizedBox(height: 8),
